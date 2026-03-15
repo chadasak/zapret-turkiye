@@ -7,5 +7,3 @@ Kisa ozet:
 - Yonetici olarak ac.
 - `hizmet_kur.bat` ile arkada sabitle, ya da `zapret_bypass.bat` ile manuel calistir.
 - Sorun cikarsa `kurulum.log` dosyasina bak.
-
-Cok kasma, ac gec.
