@@ -1,7 +1,7 @@
 # Zapret Turkiye Surumu
 
 Bu paket, Zapret'in TR icin ayarlanmis hali.
-Roblox ve Discord genelinde test edildi, gayet isi goruyor.
+Roblox ve Discord genelinde test edildi, ISP'lerin getirdigi Proton VPN engelini asiyor.
 
 Kisa ozet:
 - Yonetici olarak ac.
