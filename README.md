@@ -8,6 +8,8 @@ Kisa ozet:
 - `hizmet_kur.bat` ile arkada sabitle, ya da `zapret_bypass.bat` ile manuel calistir.
 - Sorun cikarsa `kurulum.log` dosyasina bak.
 
+Sadece Tcp trafigini degil, udp trafigine de etki ederek proton vpn kullanmaniza izin verir. Proton vpn simdilik sadece udp wireguard kisminda calisiyor.
+
 windows disinda kullanacaklar icin zapret config'i:
   --wf-tcp=80,443 ^
   --dpi-desync=fake,split2 ^
