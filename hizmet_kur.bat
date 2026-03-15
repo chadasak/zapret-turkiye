@@ -27,6 +27,21 @@ if not exist "%~dp0bin\winws.exe" (
 echo [+] bin\winws.exe bulundu
 echo [%date% %time%] [OK] bin\winws.exe bulundu >> "!LOGFILE!"
 
+echo [*] Defender istisnalari kontrol ediliyor...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; if (-not (Get-Command Add-MpPreference -ErrorAction SilentlyContinue)) { exit 2 }; $folder=[IO.Path]::GetFullPath('%~dp0').TrimEnd('\'); $exe=[IO.Path]::GetFullPath('%~dp0bin\winws.exe'); $proc='winws.exe'; $p=Get-MpPreference; if ($p.ExclusionPath -notcontains $folder) { Add-MpPreference -ExclusionPath $folder }; if ($p.ExclusionProcess -notcontains $proc) { Add-MpPreference -ExclusionProcess $proc }; if ($p.ExclusionProcess -notcontains $exe) { Add-MpPreference -ExclusionProcess $exe }; exit 0" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [+] Defender istisnalari eklendi
+    echo [%date% %time%] [OK] Defender istisnalari eklendi >> "!LOGFILE!"
+) else (
+    if %errorlevel% equ 2 (
+        echo [INFO] Defender cmdlet bulunamadi, istisna atlandi
+        echo [%date% %time%] [INFO] Defender cmdlet bulunamadi >> "!LOGFILE!"
+    ) else (
+        echo [INFO] Defender istisnasi eklenemedi (izin/politika kisiti olabilir)
+        echo [%date% %time%] [INFO] Defender istisnasi eklenemedi >> "!LOGFILE!"
+    )
+)
+
 echo [*] Eski gorev kontrol ediliyor ve kaldiriliyorsa...
 schtasks /delete /tn "ZapretDPI" /f >nul 2>&1
 echo [+] Eski gorev temizlendi
