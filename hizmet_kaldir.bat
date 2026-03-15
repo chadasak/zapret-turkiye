@@ -45,6 +45,21 @@ if %errorlevel% equ 0 (
     echo [%date% %time%] [INFO] Firewall kurali bulunamadi >> "!LOGFILE!"
 )
 
+echo [*] Defender istisnalari temizleniyor...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='SilentlyContinue'; if (-not (Get-Command Remove-MpPreference -ErrorAction SilentlyContinue)) { exit 2 }; $folder=[IO.Path]::GetFullPath('%~dp0').TrimEnd('\'); $exe=[IO.Path]::GetFullPath('%~dp0bin\winws.exe'); Remove-MpPreference -ExclusionPath $folder; Remove-MpPreference -ExclusionProcess 'winws.exe'; Remove-MpPreference -ExclusionProcess $exe; exit 0" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [+] Defender istisnalari temizlendi
+    echo [%date% %time%] [OK] Defender istisnalari temizlendi >> "!LOGFILE!"
+) else (
+    if %errorlevel% equ 2 (
+        echo [INFO] Defender cmdlet bulunamadi, istisna temizleme atlandi
+        echo [%date% %time%] [INFO] Defender cmdlet bulunamadi >> "!LOGFILE!"
+    ) else (
+        echo [INFO] Defender istisnasi kaldirma atlandi
+        echo [%date% %time%] [INFO] Defender istisnasi kaldirma atlandi >> "!LOGFILE!"
+    )
+)
+
 echo.
 echo [OK] Zapret basariyla kaldirildi.
 echo [INFO] Sorun giderme icin bakiniz: kurulum.log
