@@ -27,6 +27,25 @@ if not exist "%~dp0bin\winws.exe" (
 echo [+] bin\winws.exe bulundu
 echo [%date% %time%] [OK] bin\winws.exe bulundu >> "!LOGFILE!"
 
+if not exist "%~dp0zapret_gorev.cmd" (
+    echo [HATA] zapret_gorev.cmd bulunamadi!
+    echo [%date% %time%] [HATA] zapret_gorev.cmd dosyasi bulunamadi - Kurulum iptal >> "!LOGFILE!"
+    pause
+    exit /b 1
+)
+echo [+] zapret_gorev.cmd bulundu
+echo [%date% %time%] [OK] zapret_gorev.cmd bulundu >> "!LOGFILE!"
+
+echo [*] Web kaynakli dosya engeli temizleniyor...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; try { Get-ChildItem -LiteralPath '%~dp0' -Recurse -File | Unblock-File; exit 0 } catch { exit 1 }" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [+] Dosya engeli temizlendi
+    echo [%date% %time%] [OK] MOTW temizligi tamamlandi >> "!LOGFILE!"
+) else (
+    echo [INFO] Dosya engeli temizlenemedi (politika kisiti olabilir)
+    echo [%date% %time%] [INFO] MOTW temizligi atlandi >> "!LOGFILE!"
+)
+
 echo [*] Defender istisnalari kontrol ediliyor...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; if (-not (Get-Command Add-MpPreference -ErrorAction SilentlyContinue)) { exit 2 }; $folder=[IO.Path]::GetFullPath('%~dp0').TrimEnd('\'); $exe=[IO.Path]::GetFullPath('%~dp0bin\winws.exe'); $proc='winws.exe'; $p=Get-MpPreference; if ($p.ExclusionPath -notcontains $folder) { Add-MpPreference -ExclusionPath $folder }; if ($p.ExclusionProcess -notcontains $proc) { Add-MpPreference -ExclusionProcess $proc }; if ($p.ExclusionProcess -notcontains $exe) { Add-MpPreference -ExclusionProcess $exe }; exit 0" >nul 2>&1
 if %errorlevel% equ 0 (
@@ -53,7 +72,8 @@ echo [+] Kapandi
 echo [%date% %time%] [OK] Calisan processler kapatildi >> "!LOGFILE!"
 
 echo [*] Gorev zamanlayicida olusturuluyor...
-schtasks /create /tn "ZapretDPI" /tr "wscript.exe \"%~dp0zapret_sessiz.vbs\"" /sc onlogon /rl highest /f >nul 2>&1
+set TASKCMD="%~dp0zapret_gorev.cmd"
+schtasks /create /tn "ZapretDPI" /tr %TASKCMD% /sc onlogon /rl highest /f >nul 2>&1
 
 if %errorlevel% neq 0 (
     echo [HATA] Gorev olusturulamadi!

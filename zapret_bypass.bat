@@ -5,14 +5,20 @@ cd /d "%~dp0"
 REM Log dosya yolu
 set LOGFILE=%~dp0kurulum.log
 
-echo Zapret: Narin(Oyun/App) + Agir(Web) Hibrit Mod...
+REM Sessiz mod: scheduler calistirmasi icin uygundur
+set SILENT=0
+if /i "%~1"=="--silent" set SILENT=1
+
+if "%SILENT%"=="0" (
+    echo Zapret: Narin(Oyun/App) + Agir(Web) Hibrit Mod...
+)
 echo [%date% %time%] [INFO] Zapret bypass servisi baslatildi >> "!LOGFILE!"
 
-echo [*] DNS cache temizleniyor...
+if "%SILENT%"=="0" echo [*] DNS cache temizleniyor...
 ipconfig /flushdns >nul 2>&1
 echo [%date% %time%] [OK] DNS cache temizlendi >> "!LOGFILE!"
 
-echo [*] winws.exe calistiriliyor...
+if "%SILENT%"=="0" echo [*] winws.exe calistiriliyor...
 
 
 "%~dp0bin\winws.exe" ^
@@ -30,12 +36,16 @@ echo [*] winws.exe calistiriliyor...
   --dpi-desync-cutoff=d2 ^
   --dpi-desync-autottl=2
 
-if %errorlevel% neq 0 (
-    echo [HATA] winws.exe hata kodu: %errorlevel%
-    echo [%date% %time%] [HATA] winws.exe kapandi - Hata kodu: %errorlevel% >> "!LOGFILE!"
+  set EXIT_CODE=%errorlevel%
+
+  if !EXIT_CODE! neq 0 (
+    if "%SILENT%"=="0" echo [HATA] winws.exe hata kodu: !EXIT_CODE!
+    echo [%date% %time%] [HATA] winws.exe kapandi - Hata kodu: !EXIT_CODE! >> "!LOGFILE!"
 ) else (
-    echo [+] Servis normal kapandi
+    if "%SILENT%"=="0" echo [+] Servis normal kapandi
     echo [%date% %time%] [OK] Servis normal kapandi >> "!LOGFILE!"
 )
 
-pause
+  if "%SILENT%"=="0" pause
+
+  exit /b !EXIT_CODE!
