@@ -22,6 +22,7 @@ Not:
 
 # Update
 Zapret update aldiginda tek yapacaginiz `bin` klasorundekileri degistirmek olacak. Sonrasinda tekrardan `hizmet_kur.bat` dosyasini yonetici olarak calistirin. Zaten bu dosya zapret servisini kaldiriyor, dns cache temizliyor ve sifirdan tekrardan bi servis olusturuyor. Tekrardan hizmet kaldir -> hizmet kur yapmaniza gerek yok.
+zapret artik bugfix disinda guncelleme almayacak. bugfix aldiginda ustte yazanlari yapmaniz yeterli.
 
 # VPN'ler
 Su an kullandigim ISP proton vpn'i handshake sirasinda engelliyor. Bu zapret config'indeki udp kisimlari bu engeli ve sansuru asmak icin kullaniliyor. Proton VPN'in windows client'inde stealth mode bile calismazken bu zapret config'i ile `UDP WireGuard` ayari calismaya basladi.
