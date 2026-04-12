@@ -10,7 +10,8 @@ set SILENT=0
 if /i "%~1"=="--silent" set SILENT=1
 
 if "%SILENT%"=="0" (
-    echo Zapret: Narin(Oyun/App) + Agir(Web) Hibrit Mod...
+  REM Parantezler blok icinde kacislanmazsa CMD parse hatasi verir.
+  echo Zapret: Narin^(Oyun/App^) + Agir^(Web^) Hibrit Mod...
 )
 echo [%date% %time%] [INFO] Zapret bypass servisi baslatildi >> "!LOGFILE!"
 

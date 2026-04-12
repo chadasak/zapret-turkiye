@@ -73,7 +73,8 @@ echo [%date% %time%] [OK] Calisan processler kapatildi >> "!LOGFILE!"
 
 echo [*] Gorev zamanlayicida olusturuluyor...
 set TASKCMD="%~dp0zapret_gorev.cmd"
-schtasks /create /tn "ZapretDPI" /tr %TASKCMD% /sc onlogon /rl highest /f >nul 2>&1
+REM SYSTEM hesabi ile non-interactive calisir; kullaniciya cmd penceresi acmaz.
+schtasks /create /tn "ZapretDPI" /tr %TASKCMD% /sc onlogon /ru "SYSTEM" /rl highest /f >nul 2>&1
 
 if %errorlevel% neq 0 (
     echo [HATA] Gorev olusturulamadi!
