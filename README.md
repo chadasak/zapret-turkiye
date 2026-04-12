@@ -10,6 +10,10 @@ Kisa ozet
 
 Sadece Tcp trafigini degil, udp trafigine de etki ederek proton vpn kullanmaniza izin verir. Proton vpn simdilik sadece udp wireguard kisminda calisiyor.
 
+Not:
+- Yeni surumde zamanlayici, `zapret_sessiz.vbs` yerine `zapret_gorev.cmd` cagirir.
+- Bu sayede bazi Windows cihazlarinda gorulen 800711CE (Web'den tehlikeli dosya uzantisi) engeline takilma ihtimali azalir.
+
 # Kurulum
 - tek seferlik kullanimlar icin `zapret_bypass.bat` dosyasini yonetici olarak acmaniz yeterli.
 - arkaplanda ve pcyi her actiginizda calismasini istiyorsaniz `hizmet_kur.bat` dosyasini yonetici olarak acin. Sizin yerinize firewall ve defender ayarlarini yapip windows hizmeti olarak arkaplanda calistiracak.
@@ -37,3 +41,4 @@ Su an kullandigim ISP proton vpn'i handshake sirasinda engelliyor. Bu zapret con
   --dpi-desync-any-protocol ^
   --dpi-desync-cutoff=d2 ^
   --dpi-desync-autottl=2
+```
