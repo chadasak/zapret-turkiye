@@ -6,12 +6,12 @@ REM Log dosya yolu
 set LOGFILE=%~dp0kurulum.log
 
 REM Sessiz mod: scheduler calistirmasi icin uygundur
-set SILENT=0
+set SILENT=1
 if /i "%~1"=="--silent" set SILENT=1
 
 if "%SILENT%"=="0" (
   REM Parantezler blok icinde kacislanmazsa CMD parse hatasi verir.
-  echo Zapret: Narin^(Oyun/App^) + Agir^(Web^) Hibrit Mod...
+
 )
 echo [%date% %time%] [INFO] Zapret bypass servisi baslatildi >> "!LOGFILE!"
 
