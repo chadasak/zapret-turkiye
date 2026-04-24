@@ -6,13 +6,32 @@ REM Log dosya yolu
 set LOGFILE=%~dp0kurulum.log
 
 REM Sessiz mod: scheduler calistirmasi icin uygundur
-set SILENT=1
+set SILENT=0
 if /i "%~1"=="--silent" set SILENT=1
 
-if "%SILENT%"=="0" (
-  REM Parantezler blok icinde kacislanmazsa CMD parse hatasi verir.
-
+if not exist "%~dp0bin\winws.exe" (
+  if "%SILENT%"=="0" echo [HATA] bin\winws.exe bulunamadi.
+  echo [%date% %time%] [HATA] bin\winws.exe bulunamadi >> "!LOGFILE!"
+  if "%SILENT%"=="0" pause
+  exit /b 2
 )
+
+if not exist "%~dp0bin\WinDivert64.sys" (
+  if "%SILENT%"=="0" echo [HATA] bin\WinDivert64.sys bulunamadi.
+  echo [%date% %time%] [HATA] bin\WinDivert64.sys bulunamadi >> "!LOGFILE!"
+  if "%SILENT%"=="0" pause
+  exit /b 3
+)
+
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+  if "%SILENT%"=="0" echo [HATA] Yonetici olarak calistirin.
+  echo [%date% %time%] [HATA] Yonetici hakki yok >> "!LOGFILE!"
+  if "%SILENT%"=="0" pause
+  exit /b 5
+)
+
+if "%SILENT%"=="0" echo Zapret: Narin-Oyun/App + Agir-Web Hibrit Mod...
 echo [%date% %time%] [INFO] Zapret bypass servisi baslatildi >> "!LOGFILE!"
 
 if "%SILENT%"=="0" echo [*] DNS cache temizleniyor...
