@@ -21,6 +21,20 @@ if %errorlevel% neq 0 (
 echo [*] Kurulum basliyor...
 echo [%date% %time%] ========== KURULUM BASLADI ========== >> "%LOGFILE%"
 
+echo [*] DNS ayari kontrol ediliyor...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='SilentlyContinue'; $servers = @(); try { $servers = Get-DnsClientServerAddress -AddressFamily IPv4 -ErrorAction Stop | ForEach-Object { $_.ServerAddresses }; } catch { $servers = @(); }; $servers = $servers | Select-Object -Unique; $allowed = @('1.1.1.1','1.0.0.1','8.8.8.8','8.8.4.4','9.9.9.9','9.9.9.10','208.67.222.222','208.67.220.220'); if ($servers | Where-Object { $_ -in $allowed }) { exit 0 } else { $servers | ForEach-Object { $_ }; exit 1 }" >nul 2>&1
+set "LAST_ERR=%errorlevel%"
+if %LAST_ERR% neq 0 (
+    echo [WARN] DNS ayari tespit edilmedi.
+    echo [WARN] Turkiye'de DNS eklenmezse calismayabilir.
+    echo [WARN] Onerilen DNS: 1.1.1.1 (yedek: 1.0.0.1)
+    echo [WARN] Ornek: netsh interface ipv4 set dns name="Wi-Fi" static 1.1.1.1 primary
+    echo [%date% %time%] [WARN] DNS ayari tespit edilmedi - 1.1.1.1 oneriliyor >> "%LOGFILE%"
+) else (
+    echo [+] DNS ayari uygun gorundu.
+    echo [%date% %time%] [OK] DNS ayari dogrulandi >> "%LOGFILE%"
+)
+
 echo [*] Gerekli dosyalar kontrol ediliyor...
 if not exist "%~dp0bin\winws.exe" (
     echo [HATA] bin\winws.exe bulunamadi!
@@ -30,6 +44,15 @@ if not exist "%~dp0bin\winws.exe" (
 )
 echo [+] bin\winws.exe bulundu
 echo [%date% %time%] [OK] bin\winws.exe bulundu >> "%LOGFILE%"
+
+if not exist "%~dp0bin\WinDivert64.sys" (
+    echo [HATA] bin\WinDivert64.sys bulunamadi!
+    echo [%date% %time%] [HATA] bin\WinDivert64.sys dosyasi bulunamadi - Kurulum iptal >> "%LOGFILE%"
+    if %SILENT% equ 0 pause
+    exit /b 1
+)
+echo [+] bin\WinDivert64.sys bulundu
+echo [%date% %time%] [OK] bin\WinDivert64.sys bulundu >> "%LOGFILE%"
 
 if not exist "%~dp0zapret_gorev.cmd" (
     echo [HATA] zapret_gorev.cmd bulunamadi!
@@ -107,8 +130,26 @@ ipconfig /flushdns >nul 2>&1
 echo [+] DNS temizlendi
 echo [%date% %time%] [OK] DNS cache temizlendi >> "%LOGFILE%"
 
+echo [*] Firewall kuralı temizleniyor...
+netsh advfirewall firewall delete rule name="Zapret" program="%~dp0bin\winws.exe" >nul 2>&1
+set "LAST_ERR=%errorlevel%"
+if %LAST_ERR% equ 0 (
+    echo [+] Eski firewall kuralı temizlendi
+    echo [%date% %time%] [OK] Eski firewall kuralı temizlendi >> "%LOGFILE%"
+) else (
+    echo [INFO] Eski firewall kuralı yoktu
+    echo [%date% %time%] [INFO] Eski firewall kuralı mevcut degildi >> "%LOGFILE%"
+)
+
 echo [*] Firewall kurali ekleniyor...
 netsh advfirewall firewall add rule name="Zapret" dir=in action=allow program="%~dp0bin\winws.exe" enable=yes >nul 2>&1
+set "LAST_ERR=%errorlevel%"
+if %LAST_ERR% neq 0 (
+    echo [HATA] Firewall kurali eklenemedi! Kod: %LAST_ERR%
+    echo [%date% %time%] [HATA] Firewall kuralı eklenemedi! Kod: %LAST_ERR% >> "%LOGFILE%"
+    if %SILENT% equ 0 pause
+    exit /b 1
+)
 echo [+] Firewall kurali eklendi
 echo [%date% %time%] [OK] Firewall kurali eklendi >> "%LOGFILE%"
 
