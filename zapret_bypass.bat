@@ -2,37 +2,41 @@
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
+REM Allow --silent to skip interactive pauses (use: zapret_bypass.bat --silent)
+set "SILENT=0"
+if /I "%~1"=="--silent" set "SILENT=1"
+
 REM Log dosya yolu
-set LOGFILE=%~dp0kurulum.log
+set "LOGFILE=%~dp0kurulum.log"
 
 if not exist "%~dp0bin\winws.exe" (
   echo [HATA] bin\winws.exe bulunamadi.
-  echo [%date% %time%] [HATA] bin\winws.exe bulunamadi >> "!LOGFILE!"
-  pause
+  echo [%date% %time%] [HATA] bin\winws.exe bulunamadi >> "%LOGFILE%"
+  if %SILENT% equ 0 pause
   exit /b 2
 )
 
 if not exist "%~dp0bin\WinDivert64.sys" (
   echo [HATA] bin\WinDivert64.sys bulunamadi.
-  echo [%date% %time%] [HATA] bin\WinDivert64.sys bulunamadi >> "!LOGFILE!"
-  pause
+  echo [%date% %time%] [HATA] bin\WinDivert64.sys bulunamadi >> "%LOGFILE%"
+  if %SILENT% equ 0 pause
   exit /b 3
 )
 
 net session >nul 2>&1
 if %errorlevel% neq 0 (
   echo [HATA] Yonetici olarak calistirin.
-  echo [%date% %time%] [HATA] Yonetici hakki yok >> "!LOGFILE!"
-  pause
+  echo [%date% %time%] [HATA] Yonetici hakki yok >> "%LOGFILE%"
+  if %SILENT% equ 0 pause
   exit /b 5
 )
 
 echo Zapret: Narin-Oyun/App + Agir-Web Hibrit Mod...
-echo [%date% %time%] [INFO] Zapret bypass servisi baslatildi >> "!LOGFILE!"
+echo [%date% %time%] [INFO] Zapret bypass servisi baslatildi >> "%LOGFILE%"
 
 echo [*] DNS cache temizleniyor...
 ipconfig /flushdns >nul 2>&1
-echo [%date% %time%] [OK] DNS cache temizlendi >> "!LOGFILE!"
+echo [%date% %time%] [OK] DNS cache temizlendi >> "%LOGFILE%"
 
 echo [*] winws.exe calistiriliyor...
 
@@ -51,15 +55,17 @@ echo [*] winws.exe calistiriliyor...
   --dpi-desync-cutoff=d2 ^
   --dpi-desync-autottl=2
 
-set EXIT_CODE=%errorlevel%
+set "EXIT_CODE=%errorlevel%"
 
-if !EXIT_CODE! neq 0 (
-  echo [HATA] winws.exe hata kodu: !EXIT_CODE!
-  echo [%date% %time%] [HATA] winws.exe kapandi - Hata kodu: !EXIT_CODE! >> "!LOGFILE!"
+if %EXIT_CODE% neq 0 (
+  echo [HATA] winws.exe hata kodu: %EXIT_CODE%
+  echo [%date% %time%] [HATA] winws.exe kapandi - Hata kodu: %EXIT_CODE% >> "%LOGFILE%"
 ) else (
   echo [+] Servis normal kapandi
-  echo [%date% %time%] [OK] Servis normal kapandi >> "!LOGFILE!"
+  echo [%date% %time%] [OK] Servis normal kapandi >> "%LOGFILE%"
 )
 
-pause
-exit /b !EXIT_CODE!
+if %SILENT% equ 0 (
+  pause
+)
+exit /b %EXIT_CODE%
