@@ -34,6 +34,20 @@ if %errorlevel% neq 0 (
 echo Zapret: Narin-Oyun/App + Agir-Web Hibrit Mod...
 echo [%date% %time%] [INFO] Zapret bypass servisi baslatildi >> "%LOGFILE%"
 
+echo [*] DNS ayari kontrol ediliyor...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='SilentlyContinue'; $servers = @(); try { $servers = Get-DnsClientServerAddress -AddressFamily IPv4 -ErrorAction Stop | ForEach-Object { $_.ServerAddresses }; } catch { $servers = @(); }; $servers = $servers | Select-Object -Unique; $allowed = @('1.1.1.1','1.0.0.1','8.8.8.8','8.8.4.4','9.9.9.9','9.9.9.10','208.67.222.222','208.67.220.220'); if ($servers | Where-Object { $_ -in $allowed }) { exit 0 } else { $servers | ForEach-Object { $_ }; exit 1 }" >nul 2>&1
+set "LAST_ERR=%errorlevel%"
+if %LAST_ERR% neq 0 (
+    echo [WARN] DNS ayari tespit edilmedi.
+    echo [WARN] Turkiye'de DNS eklenmezse calismayabilir.
+    echo [WARN] Onerilen DNS: 1.1.1.1 (yedek: 1.0.0.1)
+    echo [WARN] Ornek: netsh interface ipv4 set dns name="Wi-Fi" static 1.1.1.1 primary
+    echo [%date% %time%] [WARN] DNS ayari tespit edilmedi - 1.1.1.1 oneriliyor >> "%LOGFILE%"
+) else (
+    echo [+] DNS ayari uygun gorundu.
+    echo [%date% %time%] [OK] DNS ayari dogrulandi >> "%LOGFILE%"
+)
+
 echo [*] DNS cache temizleniyor...
 ipconfig /flushdns >nul 2>&1
 echo [%date% %time%] [OK] DNS cache temizlendi >> "%LOGFILE%"
