@@ -6,10 +6,12 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 namespace ZapretTray
 {
@@ -294,6 +296,208 @@ namespace ZapretTray
                 foreach (string p in PublicDns)
                     if (s == p) return true;
             return false;
+        }
+
+        // ---------------- DNS encryption (DoH)
+
+        // What Windows is CONFIGURED to do. This is policy only: if the DoH endpoint
+        // gets blocked and fallback is allowed, Windows quietly uses plaintext port 53
+        // and nothing here changes. That is why DohWorks() exists as well.
+        public class DohInfo
+        {
+            public bool Configured;
+            public bool FallbackAllowed;
+            public string Adapter = "";
+        }
+
+        public static DohInfo DohPolicy()
+        {
+            DohInfo info = new DohInfo();
+            try
+            {
+                foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                    if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+                    if (ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel) continue;
+
+                    bool carriesDns = false;
+                    foreach (System.Net.IPAddress ip in ni.GetIPProperties().DnsAddresses)
+                        if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                        { carriesDns = true; break; }
+                    if (!carriesDns) continue;
+
+                    info.Adapter = ni.Name;
+                    string path = "SYSTEM\\CurrentControlSet\\Services\\Dnscache\\" +
+                                  "InterfaceSpecificParameters\\" + ni.Id + "\\DohInterfaceSettings\\Doh";
+                    using (RegistryKey k = Registry.LocalMachine.OpenSubKey(path))
+                    {
+                        if (k == null) return info;              // no DoH at all on this adapter
+                        foreach (string sub in k.GetSubKeyNames())
+                        {
+                            using (RegistryKey s = k.OpenSubKey(sub))
+                            {
+                                if (s == null) continue;
+                                object v = s.GetValue("DohFlags");
+                                if (v == null) continue;
+                                long f = Convert.ToInt64(v);
+                                info.Configured = true;
+                                // bit 0x2 = encryption required. Without it Windows may
+                                // silently fall back to cleartext DNS.
+                                if ((f & 0x2) == 0) info.FallbackAllowed = true;
+                            }
+                        }
+                    }
+                    return info;
+                }
+            }
+            catch { }
+            return info;
+        }
+
+        // ---------------- censorship probe
+
+        // What the ISP is doing to one host, measured rather than guessed.
+        // The two signatures we actually observed on this connection:
+        //   BLOCKED   - TCP connects, then the handshake is killed by a forged RST
+        //               the moment the SNI goes out
+        //   THROTTLED - handshake completes but takes seconds instead of milliseconds
+        //               because packets are being dropped and TCP keeps retrying
+        public class ProbeResult
+        {
+            public string Host = "";
+            public string Verdict = "";
+            public int Ms;
+            public string Detail = "";
+            public bool Good;
+        }
+
+        public static ProbeResult Probe(string host, int port, int slowMs)
+        {
+            ProbeResult r = new ProbeResult();
+            r.Host = host;
+            Stopwatch sw = Stopwatch.StartNew();
+            try
+            {
+                using (System.Net.Sockets.TcpClient c = new System.Net.Sockets.TcpClient())
+                {
+                    IAsyncResult ar = c.BeginConnect(host, port, null, null);
+                    if (!ar.AsyncWaitHandle.WaitOne(7000))
+                    {
+                        sw.Stop();
+                        r.Ms = (int)sw.ElapsedMilliseconds;
+                        r.Verdict = "NO CONNECT";
+                        r.Detail = "TCP timed out";
+                        return r;
+                    }
+                    c.EndConnect(ar);
+                    int tcpMs = (int)sw.ElapsedMilliseconds;
+
+                    using (System.Net.Security.SslStream ssl = new System.Net.Security.SslStream(
+                               c.GetStream(), false,
+                               new System.Net.Security.RemoteCertificateValidationCallback(
+                                   delegate { return true; })))
+                    {
+                        // Must be explicit. Built against .NET 4.0 defaults, AuthenticateAsClient
+                        // would offer SSL3/TLS1.0, which every modern site refuses - making a
+                        // perfectly healthy connection look blocked.
+                        const int Tls12 = 3072, Tls13 = 12288;
+                        try
+                        {
+                            ssl.AuthenticateAsClient(host, null,
+                                (System.Security.Authentication.SslProtocols)(Tls12 | Tls13), false);
+                        }
+                        catch (NotSupportedException)
+                        {
+                            ssl.AuthenticateAsClient(host, null,
+                                (System.Security.Authentication.SslProtocols)Tls12, false);
+                        }
+                        catch (ArgumentException)
+                        {
+                            ssl.AuthenticateAsClient(host, null,
+                                (System.Security.Authentication.SslProtocols)Tls12, false);
+                        }
+                        sw.Stop();
+                        r.Ms = (int)sw.ElapsedMilliseconds;
+                        string cn = "";
+                        if (ssl.RemoteCertificate != null)
+                        {
+                            string subj = ssl.RemoteCertificate.Subject;
+                            int i = subj.IndexOf("CN=", StringComparison.OrdinalIgnoreCase);
+                            cn = i >= 0 ? subj.Substring(i + 3).Split(',')[0].Trim() : subj;
+                        }
+                        if (r.Ms > slowMs)
+                        {
+                            r.Verdict = "THROTTLED";
+                            r.Detail = "tcp " + tcpMs + "ms, handshake " + r.Ms + "ms";
+                        }
+                        else
+                        {
+                            r.Verdict = "OK";
+                            r.Good = true;
+                            r.Detail = cn.Length > 0 ? cn : ssl.SslProtocol.ToString();
+                        }
+                        return r;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                r.Ms = (int)sw.ElapsedMilliseconds;
+                string m = ex.Message + " " +
+                           (ex.InnerException != null ? ex.InnerException.Message : "");
+                if (m.IndexOf("forcibly closed", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    m.IndexOf("reset", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    m.IndexOf("sifirlandi", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    r.Verdict = "BLOCKED";
+                    r.Detail = "connection reset during handshake";
+                }
+                else if (m.IndexOf("No such host", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    r.Verdict = "DNS FAIL";
+                    r.Detail = "name did not resolve";
+                }
+                else
+                {
+                    r.Verdict = "FAIL";
+                    r.Detail = ex.Message.Length > 60 ? ex.Message.Substring(0, 60) : ex.Message;
+                }
+                return r;
+            }
+        }
+
+        // cloudflare.com is the control: if that is blocked too, the problem is the
+        // connection itself, not censorship of a particular service.
+        public static string[][] ProbeTargets()
+        {
+            return new string[][] {
+                new string[] { "cloudflare.com",      "control"  },
+                new string[] { "www.roblox.com",      "roblox"   },
+                new string[] { "gamejoin.roblox.com", "roblox"   },
+                new string[] { "api.protonvpn.ch",    "proton"   },
+                new string[] { "discord.com",         "discord"  }
+            };
+        }
+
+        // Is encrypted DNS actually reachable right now? Real query, not just a ping.
+        public static bool DohWorks()
+        {
+            try
+            {
+                ServicePointManager.SecurityProtocol =
+                    ServicePointManager.SecurityProtocol | (SecurityProtocolType)3072;  // TLS 1.2
+                HttpWebRequest r = (HttpWebRequest)WebRequest.Create(
+                    "https://cloudflare-dns.com/dns-query?name=example.com&type=A");
+                r.Accept = "application/dns-json";
+                r.Timeout = 5000;
+                r.ReadWriteTimeout = 5000;
+                r.UserAgent = "ZapretTray";
+                using (HttpWebResponse resp = (HttpWebResponse)r.GetResponse())
+                    return resp.StatusCode == HttpStatusCode.OK;
+            }
+            catch { return false; }
         }
 
         // ---------------- repair steps
@@ -710,6 +914,199 @@ namespace ZapretTray
         }
     }
 
+    // ------------------------------------------------------------------ connection test
+
+    // Runs the same measurement we used to characterise the ISP by hand: connect,
+    // do a real TLS handshake, time it, and read the failure mode.
+    class TestForm : Form
+    {
+        readonly Label[] host;
+        readonly Label[] verdict;
+        readonly Label[] detail;
+        readonly Label summary;
+        readonly FlatBtn runBtn;
+        readonly string[][] targets;
+        bool running;
+
+        public TestForm()
+        {
+            targets = Engine.ProbeTargets();
+            FormBorderStyle = FormBorderStyle.None;
+            ShowInTaskbar = false;
+            StartPosition = FormStartPosition.CenterScreen;
+            BackColor = T.Bg;
+            KeyPreview = true;
+            int W = 430;
+            ClientSize = new Size(W, 54 + targets.Length * 40 + 96);
+
+            Label title = new Label();
+            title.Text = "C O N N E C T I O N   T E S T";
+            title.Font = T.UI(9f); title.ForeColor = T.Text;
+            title.Location = new Point(16, 14); title.AutoSize = true;
+            Controls.Add(title);
+
+            FlatBtn close = new FlatBtn("×", false);
+            close.NoBorder = true; close.Font = T.UI(12f);
+            close.Size = new Size(24, 24); close.Location = new Point(W - 36, 12);
+            close.Click += delegate { Close(); };
+            Controls.Add(close);
+
+            Panel ln = new Panel();
+            ln.BackColor = T.Line; ln.Location = new Point(1, 43);
+            ln.Size = new Size(W - 2, 1); Controls.Add(ln);
+
+            host = new Label[targets.Length];
+            verdict = new Label[targets.Length];
+            detail = new Label[targets.Length];
+
+            for (int i = 0; i < targets.Length; i++)
+            {
+                int y = 54 + i * 40;
+                host[i] = new Label();
+                host[i].Text = targets[i][0];
+                host[i].Font = T.UI(9f); host[i].ForeColor = T.Dim;
+                host[i].Location = new Point(16, y); host[i].Size = new Size(230, 18);
+                Controls.Add(host[i]);
+
+                verdict[i] = new Label();
+                verdict[i].Text = "waiting";
+                verdict[i].Font = T.Mono(8.5f); verdict[i].ForeColor = T.Muted;
+                verdict[i].Location = new Point(W - 16 - 170, y);
+                verdict[i].Size = new Size(170, 18);
+                verdict[i].TextAlign = ContentAlignment.MiddleRight;
+                Controls.Add(verdict[i]);
+
+                detail[i] = new Label();
+                detail[i].Font = T.Mono(7.5f); detail[i].ForeColor = T.Muted;
+                detail[i].Location = new Point(16, y + 18); detail[i].Size = new Size(W - 32, 15);
+                Controls.Add(detail[i]);
+            }
+
+            int by = 54 + targets.Length * 40;
+            Panel ln2 = new Panel();
+            ln2.BackColor = T.Line; ln2.Location = new Point(1, by);
+            ln2.Size = new Size(W - 2, 1); Controls.Add(ln2);
+
+            summary = new Label();
+            summary.Font = T.UI(8.5f); summary.ForeColor = T.Muted;
+            summary.Location = new Point(16, by + 12); summary.Size = new Size(W - 32, 34);
+            Controls.Add(summary);
+
+            runBtn = new FlatBtn("Run again", false);
+            runBtn.Location = new Point(16, by + 56); runBtn.Size = new Size(120, 26);
+            runBtn.Click += delegate { Run(); };
+            Controls.Add(runBtn);
+
+            FlatBtn copy = new FlatBtn("Copy", false);
+            copy.Location = new Point(144, by + 56); copy.Size = new Size(90, 26);
+            copy.Click += delegate { CopyReport(); };
+            Controls.Add(copy);
+
+            FlatBtn done = new FlatBtn("Close", false);
+            done.Location = new Point(W - 16 - 90, by + 56); done.Size = new Size(90, 26);
+            done.Click += delegate { Close(); };
+            Controls.Add(done);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            using (Pen p = new Pen(T.Line, 1f))
+                e.Graphics.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape) Close();
+            base.OnKeyDown(e);
+        }
+
+        protected override void OnShown(EventArgs e) { base.OnShown(e); Run(); }
+
+        public void Run()
+        {
+            if (running) return;
+            running = true;
+            runBtn.Busy = true;
+            summary.Text = "";
+            for (int i = 0; i < targets.Length; i++)
+            {
+                verdict[i].Text = "testing"; verdict[i].ForeColor = T.Muted;
+                detail[i].Text = "";
+            }
+
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate
+            {
+                bool zapretOn = Engine.IsRunning();
+                int blocked = 0, slow = 0, controlBad = 0;
+
+                for (int i = 0; i < targets.Length; i++)
+                {
+                    Engine.ProbeResult r = Engine.Probe(targets[i][0], 443, 3000);
+                    if (targets[i][1] == "control") { if (!r.Good) controlBad++; }
+                    else if (r.Verdict == "BLOCKED" || r.Verdict == "FAIL" || r.Verdict == "NO CONNECT") blocked++;
+                    else if (r.Verdict == "THROTTLED") slow++;
+
+                    int idx = i;
+                    Engine.ProbeResult res = r;
+                    try
+                    {
+                        if (!IsHandleCreated || IsDisposed) return;
+                        BeginInvoke((MethodInvoker)delegate { Show(idx, res); });
+                    }
+                    catch { return; }
+                }
+
+                int b = blocked, s = slow, cb = controlBad;
+                bool on = zapretOn;
+                try
+                {
+                    if (!IsHandleCreated || IsDisposed) return;
+                    BeginInvoke((MethodInvoker)delegate { Finish(on, b, s, cb); });
+                }
+                catch { }
+            });
+        }
+
+        void Show(int i, Engine.ProbeResult r)
+        {
+            verdict[i].Text = r.Verdict + (r.Ms > 0 ? "  " + r.Ms + "ms" : "");
+            verdict[i].ForeColor = r.Good ? T.Text : T.Off;
+            detail[i].Text = r.Detail;
+        }
+
+        void Finish(bool zapretOn, int blocked, int slow, int controlBad)
+        {
+            running = false;
+            runBtn.Busy = false;
+
+            if (controlBad > 0)
+                summary.Text = "The control host failed too, so this looks like a general\r\n" +
+                               "connection problem rather than censorship.";
+            else if (blocked == 0 && slow == 0)
+                summary.Text = zapretOn
+                    ? "Everything is getting through. The bypass is working."
+                    : "Everything is getting through even with zapret off.";
+            else if (!zapretOn)
+                summary.Text = "Zapret is OFF and " + (blocked + slow) + " target(s) are affected.\r\n" +
+                               "Start it and run this again to compare.";
+            else
+                summary.Text = "Zapret is ON but " + (blocked + slow) + " target(s) are still affected.\r\n" +
+                               "Try Repair, or the config may need a change.";
+        }
+
+        void CopyReport()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Zapret connection test - " + DateTime.Now.ToString("yyyy-MM-dd HH:mm"));
+            sb.AppendLine("zapret: " + (Engine.IsRunning() ? "ON" : "OFF"));
+            for (int i = 0; i < targets.Length; i++)
+                sb.AppendLine(("  " + host[i].Text).PadRight(28) + verdict[i].Text + "   " + detail[i].Text);
+            sb.AppendLine(summary.Text.Replace("\r\n", " "));
+            try { Clipboard.SetText(sb.ToString()); } catch { }
+        }
+    }
+
     // ------------------------------------------------------------------ panel
 
     class PanelForm : Form
@@ -722,7 +1119,7 @@ namespace ZapretTray
         Label lStateDot, lStateTitle, lStateSub;
         FlatBtn bigBtn;
         Toggle tgBoot, tgTray, tgWatch, tgDns;
-        Label vWinws, vDns, vFw, vDef, vTask;
+        Label vWinws, vDns, vFw, vDef, vTask, vEnc;
         LogView logBox;
         System.Windows.Forms.Timer tmr;
         System.Windows.Forms.Timer showAnim;
@@ -738,7 +1135,7 @@ namespace ZapretTray
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.Manual;
             BackColor = T.Bg;
-            ClientSize = new Size(360, 636);
+            ClientSize = new Size(360, 658);
             KeyPreview = true;
             Font = T.UI(9f);
             Build();
@@ -875,40 +1272,45 @@ namespace ZapretTray
             vFw = StatusRow("firewall", 382);
             vDef = StatusRow("defender", 404);
             vTask = StatusRow("boot task", 426);
+            vEnc = StatusRow("dns encryption", 448);
 
-            Line(454);
+            Line(476);
 
             // --- log
-            Lbl("L O G", T.UI(7.5f), T.Muted, 16, 464, 200, ContentAlignment.MiddleLeft);
+            Lbl("L O G", T.UI(7.5f), T.Muted, 16, 486, 200, ContentAlignment.MiddleLeft);
             FlatBtn openLog = new FlatBtn("open", false);
             openLog.Size = new Size(42, 18);
-            openLog.Location = new Point(W - 16 - 42, 462);
+            openLog.Location = new Point(W - 16 - 42, 484);
             openLog.Font = T.UI(7.5f);
             openLog.Click += delegate { Engine.OpenPath(Engine.LogPath); };
             Controls.Add(openLog);
 
             logBox = new LogView();
-            logBox.Location = new Point(16, 486);
+            logBox.Location = new Point(16, 508);
             logBox.Size = new Size(W - 32, 96);
             Controls.Add(logBox);
 
-            Line(596);
+            Line(618);
 
             // --- footer
             FlatBtn fix = new FlatBtn("Repair", false);
-            fix.Location = new Point(16, 604); fix.Size = new Size(100, 26);
+            fix.Location = new Point(16, 626); fix.Size = new Size(100, 26);
             fix.Click += delegate { app.FullRepair(); FullRefresh(); };
             Controls.Add(fix);
 
             FlatBtn restart = new FlatBtn("Restart", false);
-            restart.Location = new Point(124, 604); restart.Size = new Size(126, 26);
+            restart.Location = new Point(124, 626); restart.Size = new Size(126, 26);
             restart.Click += delegate { app.Restart(); FullRefresh(); };
             Controls.Add(restart);
 
-            FlatBtn folder = new FlatBtn("Folder", false);
-            folder.Location = new Point(258, 604); folder.Size = new Size(86, 26);
-            folder.Click += delegate { Engine.OpenPath(Engine.Root); };
-            Controls.Add(folder);
+            // "Folder" lives in the right-click menu; this space is worth more as a test
+            FlatBtn test = new FlatBtn("Test", false);
+            test.Location = new Point(258, 626); test.Size = new Size(86, 26);
+            test.Click += delegate
+            {
+                using (TestForm tf = new TestForm()) tf.ShowDialog(this);
+            };
+            Controls.Add(test);
 
             tmr = new System.Windows.Forms.Timer();
             tmr.Interval = 1500;
@@ -1002,6 +1404,9 @@ namespace ZapretTray
             vWinws.ForeColor = on ? T.Text : T.Off;
             vDns.Text = ds;
             vDns.ForeColor = Engine.DnsOk() ? T.Text : T.Off;
+
+            vEnc.Text = app.DnsLabel;
+            vEnc.ForeColor = app.DnsWeak ? T.Off : T.Text;
 
             logBox.SetLines(Engine.Tail(80));
         }
@@ -1117,7 +1522,12 @@ namespace ZapretTray
         int tick;
         int restarts;
         DateTime restartWindow = DateTime.MinValue;
-        bool dnsWarned;
+        bool dnsChecking;
+        bool quitting;
+        string lastDnsVerdict = "";
+
+        public string DnsLabel = "checking...";     // read by the panel
+        public bool DnsWeak = true;
 
         public TrayApp()
         {
@@ -1157,6 +1567,8 @@ namespace ZapretTray
             if (!File.Exists(Engine.ExePath))
                 Balloon("bin\\winws.exe not found",
                         "Keep ZapretTray.exe inside the zapret folder.", ToolTipIcon.Error);
+            else if (Set.Desired && !stateOn)
+                RestoreOnLaunch();
         }
 
         protected override void Dispose(bool disposing)
@@ -1196,13 +1608,14 @@ namespace ZapretTray
 
         void TimerTick(object sender, EventArgs e)
         {
+            if (quitting) return;
             tick++;
             UpdateIcon(false);
 
             if (Set.Watchdog && Set.Desired && !stateOn && !busy)
                 Watchdog();
 
-            if (Set.DnsGuard && tick % 15 == 0)
+            if (Set.DnsGuard && (tick == 2 || tick % 15 == 0))
                 DnsCheck();
         }
 
@@ -1233,16 +1646,91 @@ namespace ZapretTray
             });
         }
 
+        // Checks three separate things, because they fail independently:
+        //   1. is a public resolver set at all
+        //   2. is Windows configured to encrypt DNS, and does it allow a cleartext fallback
+        //   3. is encrypted DNS actually reachable right now
+        // A blocked DoH endpoint with fallback allowed is the dangerous case: everything
+        // keeps working while DNS is silently cleartext and open to hijacking.
         void DnsCheck()
         {
-            bool ok = Engine.DnsOk();
-            if (!ok && !dnsWarned)
+            if (dnsChecking) return;
+            dnsChecking = true;
+
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate
             {
-                dnsWarned = true;
-                Engine.Log("[WARN] no public DNS - zapret may not work in Turkey");
-                Balloon("DNS warning", "No public DNS is set. Zapret may not work. Use Repair > set DNS.", ToolTipIcon.Warning);
+                bool publicDns = Engine.DnsOk();
+                Engine.DohInfo doh = Engine.DohPolicy();
+                bool live = doh.Configured && Engine.DohWorks();
+                Post(delegate { dnsChecking = false; ApplyDnsVerdict(publicDns, doh, live); });
+            });
+        }
+
+        void ApplyDnsVerdict(bool publicDns, Engine.DohInfo doh, bool live)
+        {
+            string verdict, label;
+            string title = "", body = "";
+            ToolTipIcon icon = ToolTipIcon.Warning;
+
+            if (!publicDns)
+            {
+                verdict = "no-public";
+                label = "no public DNS";
+                title = "DNS warning";
+                body = "No public resolver is set. Use Repair > Set DNS to 1.1.1.1.";
+                icon = ToolTipIcon.Error;
             }
-            else if (ok) dnsWarned = false;
+            else if (!doh.Configured)
+            {
+                verdict = "plain";
+                label = "NOT encrypted";
+                title = "DNS is not encrypted";
+                body = "Your resolver is public but DoH is off on " + doh.Adapter +
+                       ". Your ISP can read and forge DNS answers.";
+            }
+            else if (!live && doh.FallbackAllowed)
+            {
+                verdict = "downgraded";
+                label = "PLAINTEXT FALLBACK";
+                title = "Encrypted DNS is down";
+                body = "DoH is unreachable and fallback is allowed, so DNS is cleartext right now. " +
+                       "Your ISP can hijack it and zapret cannot help with that.";
+                icon = ToolTipIcon.Error;
+            }
+            else if (!live)
+            {
+                verdict = "doh-down";
+                label = "DoH unreachable";
+                title = "Encrypted DNS is down";
+                body = "DoH is unreachable but set to encrypted-only, so names will not resolve. " +
+                       "Not hijackable, just offline.";
+                icon = ToolTipIcon.Error;
+            }
+            else
+            {
+                verdict = doh.FallbackAllowed ? "ok-fallback" : "ok-strict";
+                label = doh.FallbackAllowed ? "encrypted (fallback on)" : "encrypted only";
+            }
+
+            DnsLabel = label;
+            DnsWeak = verdict != "ok-strict";
+
+            if (verdict == lastDnsVerdict) return;
+            bool wasBad = lastDnsVerdict.Length > 0 && !lastDnsVerdict.StartsWith("ok");
+            lastDnsVerdict = verdict;
+
+            if (verdict.StartsWith("ok"))
+            {
+                if (wasBad)
+                {
+                    Engine.Log("[OK] DNS back to healthy: " + label);
+                    Balloon("DNS recovered", "Encrypted DNS is working again.", ToolTipIcon.Info);
+                }
+                return;
+            }
+
+            Engine.Log("[WARN] DNS: " + label);
+            Balloon(title, body, icon);
         }
 
         void UpdateIcon(bool force)
@@ -1378,6 +1866,38 @@ namespace ZapretTray
             if (panel != null && !panel.IsDisposed) panel.SetBusy(b);
         }
 
+        // Quitting the tray takes the engine down with it, so the icon is the real
+        // on/off switch. Desired is deliberately left alone: relaunching brings zapret
+        // back, and the boot task still starts it at the next logon if that is enabled.
+        void QuitAll()
+        {
+            quitting = true;
+            tray.Visible = false;
+            if (Engine.IsRunning())
+            {
+                Engine.Stop();
+                Engine.Log("[OK] engine stopped (tray quit)");
+            }
+            ExitThread();
+        }
+
+        // Counterpart to QuitAll: if zapret is meant to be on but is not running,
+        // start it on launch instead of waiting for the watchdog to call it a crash.
+        void RestoreOnLaunch()
+        {
+            busy = true;
+            SetBusyUi(true);
+            string err = Engine.Start();
+            After(900, delegate
+            {
+                busy = false;
+                SetBusyUi(false);
+                UpdateIcon(true);
+                if (stateOn) Engine.Log("[OK] engine started (tray launch)");
+                else Engine.Log("[ERROR] engine could not start on launch: " + err);
+            });
+        }
+
         // ---------------- panel + menu
 
         public void ShowPanel()
@@ -1432,13 +1952,17 @@ namespace ZapretTray
             foreach (ToolStripItem it in fix.DropDownItems) it.ForeColor = T.Dim;
             m.Items.Add(fix);
 
+            m.Items.Add("Connection test", null, delegate
+            {
+                using (TestForm tf = new TestForm()) tf.ShowDialog();
+            });
             m.Items.Add("Open panel", null, delegate { ShowPanel(); });
 
             m.Items.Add(new ToolStripSeparator());
             m.Items.Add("Open log", null, delegate { Engine.OpenPath(Engine.LogPath); });
             m.Items.Add("Open folder", null, delegate { Engine.OpenPath(Engine.Root); });
             m.Items.Add(new ToolStripSeparator());
-            m.Items.Add("Quit", null, delegate { tray.Visible = false; ExitThread(); });
+            m.Items.Add("Quit (stops Zapret too)", null, delegate { QuitAll(); });
 
             foreach (ToolStripItem it in m.Items) it.ForeColor = T.Dim;
         }
@@ -1461,7 +1985,7 @@ namespace ZapretTray
                 return;
             string e = Engine.SetPublicDns();
             Engine.Log((e.Length == 0 ? "[OK]" : "[ERROR]") + " DNS set to 1.1.1.1 (tray)");
-            dnsWarned = false;
+            lastDnsVerdict = "";
             Balloon(e.Length == 0 ? "DNS updated" : "Could not set DNS",
                     e.Length == 0 ? "1.1.1.1 / 1.0.0.1" : e,
                     e.Length == 0 ? ToolTipIcon.Info : ToolTipIcon.Error);
