@@ -9,7 +9,7 @@ if /I "%~1"=="--silent" set "SILENT=1"
 REM Log dosya yolu (quoted at set to preserve spaces)
 set "LOGFILE=%~dp0kurulum.log"
 
-REM Yönetici kontrolü
+REM Yonetici kontrolu
 net session >nul 2>&1
 if %errorlevel% neq 0 (
     echo [!] Yonetici olarak calistirin!
@@ -74,7 +74,7 @@ if %errorlevel% equ 0 (
 )
 
 echo [*] Defender istisnalari kontrol ediliyor...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; if (-not (Get-Command Add-MpPreference -ErrorAction SilentlyContinue)) { exit 2 }; $folder=[IO.Path]::GetFullPath('%~dp0'); Add-MpPreference -ExclusionPath $folder -ErrorAction Stop; exit 0" >nul 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; if (-not (Get-Command Add-MpPreference -ErrorAction SilentlyContinue)) { exit 2 }; $folder=[IO.Path]::GetFullPath('%~dp0').TrimEnd('\'); Add-MpPreference -ExclusionPath $folder -ErrorAction Stop; Add-MpPreference -ExclusionProcess 'winws.exe' -ErrorAction SilentlyContinue; exit 0" >nul 2>&1
 set "LAST_ERR=%errorlevel%"
 if %LAST_ERR% equ 0 (
     echo [+] Defender istisnalari eklendi
@@ -130,15 +130,15 @@ ipconfig /flushdns >nul 2>&1
 echo [+] DNS temizlendi
 echo [%date% %time%] [OK] DNS cache temizlendi >> "%LOGFILE%"
 
-echo [*] Firewall kuralı temizleniyor...
+echo [*] Firewall kurali temizleniyor...
 netsh advfirewall firewall delete rule name="Zapret" program="%~dp0bin\winws.exe" >nul 2>&1
 set "LAST_ERR=%errorlevel%"
 if %LAST_ERR% equ 0 (
-    echo [+] Eski firewall kuralı temizlendi
-    echo [%date% %time%] [OK] Eski firewall kuralı temizlendi >> "%LOGFILE%"
+    echo [+] Eski firewall kurali temizlendi
+    echo [%date% %time%] [OK] Eski firewall kurali temizlendi >> "%LOGFILE%"
 ) else (
-    echo [INFO] Eski firewall kuralı yoktu
-    echo [%date% %time%] [INFO] Eski firewall kuralı mevcut degildi >> "%LOGFILE%"
+    echo [INFO] Eski firewall kurali yoktu
+    echo [%date% %time%] [INFO] Eski firewall kurali mevcut degildi >> "%LOGFILE%"
 )
 
 echo [*] Firewall kurali ekleniyor...
@@ -146,7 +146,7 @@ netsh advfirewall firewall add rule name="Zapret" dir=in action=allow program="%
 set "LAST_ERR=%errorlevel%"
 if %LAST_ERR% neq 0 (
     echo [HATA] Firewall kurali eklenemedi! Kod: %LAST_ERR%
-    echo [%date% %time%] [HATA] Firewall kuralı eklenemedi! Kod: %LAST_ERR% >> "%LOGFILE%"
+    echo [%date% %time%] [HATA] Firewall kurali eklenemedi! Kod: %LAST_ERR% >> "%LOGFILE%"
     if %SILENT% equ 0 pause
     exit /b 1
 )

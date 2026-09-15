@@ -1,0 +1,4 @@
+# Windows-only project, distributed as a GitHub ZIP.
+# Never rewrite line endings: GitHub serves blob bytes verbatim in the ZIP,
+# so .bat files must keep their CRLF or cmd.exe can mis-parse them.
+* -text

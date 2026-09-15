@@ -3,9 +3,9 @@ setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 REM Log dosya yolu
-set LOGFILE=%~dp0kurulum.log
+set "LOGFILE=%~dp0kurulum.log"
 
-REM Yönetici kontrolü
+REM Yonetici kontrolu
 net session >nul 2>&1
 if %errorlevel% neq 0 (
     echo [!] Yonetici olarak calistirin!
@@ -16,6 +16,16 @@ if %errorlevel% neq 0 (
 
 echo [*] Zapret durduruluyor ve kaldiriliyor...
 echo [%date% %time%] ========== KALDIR ISLEMI BASLADI ========== >> "!LOGFILE!"
+
+REM Tepsi uygulamasi ONCE kapanmali: watchdog acikken winws.exe'yi geri baslatir
+taskkill /f /im ZapretTray.exe >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [+] ZapretTray.exe kapatildi
+    echo [%date% %time%] [OK] ZapretTray.exe kapatildi >> "!LOGFILE!"
+) else (
+    echo [INFO] ZapretTray.exe calismiyordu
+    echo [%date% %time%] [INFO] ZapretTray.exe calismiyordu >> "!LOGFILE!"
+)
 
 taskkill /f /im winws.exe >nul 2>&1
 if %errorlevel% equ 0 (
@@ -35,7 +45,17 @@ if %errorlevel% equ 0 (
     echo [%date% %time%] [INFO] Zamanlayici gorevi bulunamadi >> "!LOGFILE!"
 )
 
-echo [*] Firewall kuralı kaldırılıyor...
+REM Tepsi uygulamasinin acilis gorevi
+schtasks /delete /tn "ZapretTrayUI" /f >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [+] Tepsi acilis gorevi silindi
+    echo [%date% %time%] [OK] ZapretTrayUI gorevi silindi >> "!LOGFILE!"
+) else (
+    echo [INFO] Tepsi acilis gorevi zaten yok
+    echo [%date% %time%] [INFO] ZapretTrayUI gorevi bulunamadi >> "!LOGFILE!"
+)
+
+echo [*] Firewall kurali kaldiriliyor...
 netsh advfirewall firewall delete rule name="Zapret" program="%~dp0bin\winws.exe" >nul 2>&1
 if %errorlevel% equ 0 (
     echo [+] Firewall kurali kaldirildi
@@ -46,18 +66,18 @@ if %errorlevel% equ 0 (
 )
 
 echo [*] Defender istisnalari temizleniyor...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='SilentlyContinue'; if (-not (Get-Command Remove-MpPreference -ErrorAction SilentlyContinue)) { exit 2 }; $folder=[IO.Path]::GetFullPath('%~dp0').TrimEnd('\'); $exe=[IO.Path]::GetFullPath('%~dp0bin\winws.exe'); Remove-MpPreference -ExclusionPath $folder; Remove-MpPreference -ExclusionProcess 'winws.exe'; Remove-MpPreference -ExclusionProcess $exe; exit 0" >nul 2>&1
-if %errorlevel% equ 0 (
+REM Eski surumler klasoru sondaki ters bolu ile eklemis olabilir; iki sekli de kaldir.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='SilentlyContinue'; if (-not (Get-Command Remove-MpPreference -ErrorAction SilentlyContinue)) { exit 2 }; $full=[IO.Path]::GetFullPath('%~dp0'); $trim=$full.TrimEnd('\'); $exe=[IO.Path]::GetFullPath('%~dp0bin\winws.exe'); Remove-MpPreference -ExclusionPath $trim; Remove-MpPreference -ExclusionPath $full; Remove-MpPreference -ExclusionPath ($trim + '\'); Remove-MpPreference -ExclusionProcess 'winws.exe'; Remove-MpPreference -ExclusionProcess $exe; exit 0" >nul 2>&1
+set "LAST_ERR=%errorlevel%"
+if %LAST_ERR% equ 0 (
     echo [+] Defender istisnalari temizlendi
     echo [%date% %time%] [OK] Defender istisnalari temizlendi >> "!LOGFILE!"
+) else if %LAST_ERR% equ 2 (
+    echo [INFO] Defender cmdlet bulunamadi, istisna temizleme atlandi
+    echo [%date% %time%] [INFO] Defender cmdlet bulunamadi >> "!LOGFILE!"
 ) else (
-    if %errorlevel% equ 2 (
-        echo [INFO] Defender cmdlet bulunamadi, istisna temizleme atlandi
-        echo [%date% %time%] [INFO] Defender cmdlet bulunamadi >> "!LOGFILE!"
-    ) else (
-        echo [INFO] Defender istisnasi kaldirma atlandi
-        echo [%date% %time%] [INFO] Defender istisnasi kaldirma atlandi >> "!LOGFILE!"
-    )
+    echo [INFO] Defender istisnasi kaldirma atlandi
+    echo [%date% %time%] [INFO] Defender istisnasi kaldirma atlandi >> "!LOGFILE!"
 )
 
 echo.
