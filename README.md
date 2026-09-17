@@ -16,6 +16,35 @@ short version
 it does not only touch tcp traffic, it affects udp as well, which is what lets you use proton vpn. proton vpn currently only works on the udp wireguard setting.
 
 
+# what the isp actually does
+
+these came out of the test button in the tray app. same machine, same minutes,
+measured twice:
+
+```
+                 zapret on        zapret off
+roblox           287 ms           connection reset
+proton api       212 ms           7953 ms
+protonvpn.com    198 ms           11650 ms
+```
+
+two different behaviours came out of it, and it is worth telling them apart.
+
+roblox is properly blocked. the tcp connection opens fine in about 150 ms. then
+the tls clienthello goes out and the connection dies on the spot. the clienthello
+is the packet that carries the site name in the clear. something in the middle
+reads that name and forges a reset. the server is not closing anything, the thing
+in between is.
+
+proton is not blocked, it is throttled. the handshake completes every single time,
+but it takes 8 to 11 seconds instead of 0.2. packets get dropped and tcp keeps
+retrying. that is why the client feels like it will not even open: every request
+it makes takes ten seconds and times out. they did not even need to block it.
+
+this is exactly what `--dpi-desync-split-pos=sniext+4` in the config is for. it
+splits the clienthello right across the site name so the dpi cannot match it. the
+numbers say it works.
+
 # install
 - do not forget to set the dns before installing the service; without it this may not work in turkey. recommended value: `1.1.1.1`.
 - example command to add dns: `netsh interface ipv4 set dns name="Wi-Fi" static 1.1.1.1 primary`

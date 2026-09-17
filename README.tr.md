@@ -16,6 +16,34 @@ Kisa ozet
 Sadece Tcp trafigini degil, udp trafigine de etki ederek proton vpn kullanmaniza izin verir. Proton vpn simdilik sadece udp wireguard kisminda calisiyor.
 
 
+# isp gercekte ne yapiyor
+
+bunlar tepsi uygulamasindaki test dugmesinden cikti. ayni makine, ayni dakikalar,
+iki kere olculdu:
+
+```
+                 zapret acik      zapret kapali
+roblox           287 ms           baglanti resetleniyor
+proton api       212 ms           7953 ms
+protonvpn.com    198 ms           11650 ms
+```
+
+iki farkli sansur davranisi cikti, ikisini ayirmak lazim.
+
+roblox tamamen engelli. tcp baglantisi 150 ms civarinda guzelce aciliyor. sonra
+tls clienthello gidiyor ve baglanti aninda oluyor. clienthello, site adini duz
+metin tasiyan paket. ortadaki bi kutu adi okuyup sahte rst uretiyor. sunucu
+kapatmiyor baglantiyi, araya giren kapatiyor.
+
+proton engelli degil, yavaslatilmis. el sikisma her seferinde tamamlaniyor ama
+0.2 saniye yerine 8-11 saniye suruyor. paket dusuruluyor, tcp tekrar tekrar
+deniyor. client'in "acilmiyor bile" hissi vermesinin sebebi bu: attigi her istek
+on saniye suruyor ve timeout'a giriyor. engellemeye bile gerek duymamislar.
+
+config'deki `--dpi-desync-split-pos=sniext+4` tam olarak bunun icin var.
+clienthello'yu site adinin ustunden bolup dpi'nin eslesmesini bozuyor. sayilar
+calistigini gosteriyor.
+
 # Kurulum
 - hizmeti kurmadan once dns ayarlamayi unutmayin; DNS eklenmezse Turkiye'de calismayabilir. Onerilen deger: `1.1.1.1`.
 - DNS eklemek icin ornek komut: `netsh interface ipv4 set dns name="Wi-Fi" static 1.1.1.1 primary`
