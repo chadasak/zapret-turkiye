@@ -1,59 +1,59 @@
-🇹🇷 turkce · [🇬🇧 english](README.en.md)
+[🇹🇷 turkce](README.tr.md) · 🇬🇧 english
 
-# Zapret Turkiye Surumu
+# zapret turkey edition
 
-Bu paket, Zapret'in TR icin ayarlanmis hali.
-Roblox ve Discord genelinde test edildi, ISP'lerin getirdigi Proton VPN engelini de udp wireguard seviyesinde asiyor. simdilik wireguard'in engelini asamiyorum.
+this is zapret, tuned for turkey.
+tested mostly on roblox and discord. it also gets past the proton vpn block that isps put in place, at the udp wireguard level. i still cannot get past the block on plain wireguard.
 
-Not: Dns ayari eksikse Turkiye'de calismaz. Bu proje DNS farki olmadan hedef sunuculara yonelik cozumleri dogru calistiramaz. Bu yuzden aktif baglantiniza en azindan bir public DNS ekleyin. Benim tavsiyem 1.1.1.1 (yedek 1.0.0.1).
+note: it will not work in turkey if your dns is not set. this project cannot do its job properly without a different dns, so add at least one public dns to your active connection. i recommend 1.1.1.1 (backup 1.0.0.1).
 
-Kisa ozet
-- Wi-Fi / ethernet ayarlarindan DNS'i ekleyin: `1.1.1.1` (veya yedek `1.0.0.1`)
-- Yonetici olarak ac.
-- `hizmet_kur.bat` ile arkada sabitle, ya da `zapret_bypass.bat` ile manuel calistir.
-- Sorun cikarsa `kurulum.log` dosyasina bak.
+short version
+- add the dns in your wi-fi / ethernet settings: `1.1.1.1` (or backup `1.0.0.1`)
+- run it as administrator.
+- use `hizmet_kur.bat` to pin it in the background, or `zapret_bypass.bat` to run it by hand.
+- if something breaks, look at `kurulum.log`.
 
-Sadece Tcp trafigini degil, udp trafigine de etki ederek proton vpn kullanmaniza izin verir. Proton vpn simdilik sadece udp wireguard kisminda calisiyor.
+it does not only touch tcp traffic, it affects udp as well, which is what lets you use proton vpn. proton vpn currently only works on the udp wireguard setting.
 
 
-# Kurulum
-- hizmeti kurmadan once dns ayarlamayi unutmayin; DNS eklenmezse Turkiye'de calismayabilir. Onerilen deger: `1.1.1.1`.
-- DNS eklemek icin ornek komut: `netsh interface ipv4 set dns name="Wi-Fi" static 1.1.1.1 primary`
-- dns over https ayari extra guvenlik sagliyabilir.
-- tek seferlik kullanimlar icin `zapret_bypass.bat` dosyasini yonetici olarak acmaniz yeterli.
-- arkaplanda ve pcyi her actiginizda calismasini istiyorsaniz `hizmet_kur.bat` dosyasini yonetici olarak acin. Sizin yerinize firewall ve defender ayarlarini yapip windows hizmeti olarak arkaplanda calistiracak.
-- hizmeti kaldirmak icin `hizmet_kaldir.bat` dosyasini yonetici olarak acin. hem windows hizmetlerini kaldiracak hem de firewall ve defender ayarlarini eski haline cevirecektir.
-- kurulum esasinda herhangi bir problemde log dosyasini kontrol etmeyi unutmayin
+# install
+- do not forget to set the dns before installing the service; without it this may not work in turkey. recommended value: `1.1.1.1`.
+- example command to add dns: `netsh interface ipv4 set dns name="Wi-Fi" static 1.1.1.1 primary`
+- dns over https gives you extra protection.
+- for one-off use, opening `zapret_bypass.bat` as administrator is enough.
+- if you want it running in the background every time you turn the pc on, open `hizmet_kur.bat` as administrator. it sets up firewall and defender for you and runs it in the background as a windows task.
+- to remove it, open `hizmet_kaldir.bat` as administrator. it removes the windows tasks and puts the firewall and defender settings back the way they were.
+- if anything goes wrong during install, remember to check the log file
 
 # tray app
 
-artik `ZapretTray.exe` var. saat yaninda ufak bi z simgesi olarak duruyor. cift tiklayip aciyorsun, uac soracak, normal, winws.exe zaten yonetici istiyor.
+there is a `ZapretTray.exe` now. it sits next to your clock as a small z icon. double click it, it will ask for uac, that is normal, winws.exe needs administrator anyway.
 
-sol tik panel aciyor, sag tik menu cikariyor. panelde kocaman bi start/stop dugmesi var. simge beyazsa acik, soluk griyse kapali, bakinca anliyorsun.
+left click opens a panel, right click opens a menu. the panel has a big start/stop button. white icon means on, dim grey means off, you can tell at a glance.
 
-ne yapiyor:
-- ac kapa. ayarlari `zapret_gorev.cmd` dosyasindan okuyor yani config hala orada duruyor. orayi degistirirsen uygulama da ona gore calisir, iki yerde ayni seyi tutmuyorsun.
-- windows acilisinda calis anahtari. `hizmet_kur.bat` ile ayni isi yapiyor, gorev olusturuyor.
-- tepside otomatik ac anahtari. bunu acarsan her acilista uac sormadan geliyor.
-- winws.exe cokerse kendi geri baslatiyor. 2 dakikada 3 defa denedi hala olmuyorsa birakiyor ve haber veriyor, sonsuz donguye girmiyor.
-- dns bekcisi. public dns var mi, dns sifreli mi diye bakiyor. sadece ayara bakmiyor, gercekten doh calisiyor mu diye sorgu atiyor. cunku doh engellenirse windows sessizce duz metne dusuyor ve kayit defterinde hicbir sey degismiyor. o duruma dusersen uyariyor. zapret'in orada bi faydasi olmuyor zaten, ip'yi zaten yanlis aliyorsun.
-- onar dugmesi. firewall kurali, defender istisnasi, dns cache, dosya engeli. hepsini arka arkaya yapiyor.
-- test dugmesi. roblox, proton, discord ve kontrol icin cloudflare'a baglanip tls el sikismasini olcuyor. baglanti resetleniyorsa BLOCKED, 3 saniyeden uzun suruyorsa THROTTLED diyor. cloudflare da patlarsa sorun sansur degil internetin diye soyluyor. tahmin etmek yerine bakmis oluyorsun.
+what it does:
+- on and off. it reads the settings from `zapret_gorev.cmd`, so the config still lives there. change that file and the app follows, you are not keeping the same thing in two places.
+- start with windows switch. same job as `hizmet_kur.bat`, it creates the task.
+- show the icon at logon switch. turn this on and it comes back on every boot without asking for uac.
+- if winws.exe crashes it restarts it by itself. if it tried 3 times in 2 minutes and it still will not start, it gives up and tells you, so it never loops forever.
+- dns guard. it checks whether you have a public dns and whether dns is encrypted. it does not just read the setting, it sends a real query to see if doh actually works. because if doh gets blocked, windows quietly drops to plaintext and nothing in the registry changes. if that happens it warns you. zapret cannot help you there anyway, you are getting the wrong ip in the first place.
+- repair button. firewall rule, defender exclusion, dns cache, file unblocking. it does all of them one after another.
+- test button. it connects to roblox, proton, discord and cloudflare as a control, and measures the tls handshake. if the connection gets reset it says BLOCKED, if it takes longer than 3 seconds it says THROTTLED. if cloudflare fails too it tells you the problem is your internet, not censorship. you get to look instead of guessing.
 
-cikinca zapret de duruyor, tekrar acinca geri geliyor. yani simge tam anlamiyla ac kapa dugmesi.
+quitting it stops zapret too, opening it brings zapret back. so the icon really is an on/off switch.
 
-log da panelin icinde gorunuyor, notepad acmaya gerek yok.
+the log shows up inside the panel as well, no need to open notepad.
 
-derlemek istersen `tray/build.cmd`. windows'un kendi icindeki csc.exe ile derleniyor, sdk falan kurmana gerek yok. tek dosya cikiyor.
+if you want to build it yourself, `tray/build.cmd`. it compiles with the csc.exe that already ships inside windows, you do not need to install an sdk. it produces a single file.
 
-# Update
-Zapret update aldiginda tek yapacaginiz `bin` klasorundekileri degistirmek olacak. Sonrasinda tekrardan `hizmet_kur.bat` dosyasini yonetici olarak calistirin. Zaten bu dosya zapret servisini kaldiriyor, dns cache temizliyor ve sifirdan tekrardan bi servis olusturuyor. Tekrardan hizmet kaldir -> hizmet kur yapmaniza gerek yok.
-not: zapret artik sadece bugfix guncellemeleri alacak.
+# update
+when zapret gets an update, all you do is replace what is inside the `bin` folder. after that run `hizmet_kur.bat` as administrator again. that file already removes the zapret service, clears the dns cache and creates a service again from scratch. you do not need to do remove -> install a second time.
+note: zapret will only get bugfix updates from now on.
 
-# VPN'ler
-Su an kullandigim ISP proton vpn'i handshake sirasinda engelliyor. Bu zapret config'indeki udp kisimlari bu engeli ve sansuru asmak icin kullaniliyor. Proton VPN'in windows client'inde stealth mode bile calismazken bu zapret config'i ile `UDP WireGuard` ayari calismaya basladi.
+# vpns
+the isp i am on right now blocks proton vpn during the handshake. the udp parts in this zapret config are there to get past that block and the censorship. even stealth mode in proton vpn's windows client does not work, but with this zapret config the `UDP WireGuard` setting started working.
 
-# windows disinda kullanacaklar icin zapret config'i
+# zapret config for people using it outside windows
 ```bash
   --wf-tcp=80,443 ^
   --dpi-desync=fake,split2 ^
