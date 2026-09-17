@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 REM Log file path
-set "LOGFILE=%~dp0kurulum.log"
+set "LOGFILE=%~dp0zapret.log"
 
 REM Administrator check
 net session >nul 2>&1
@@ -82,7 +82,7 @@ if %LAST_ERR% equ 0 (
 
 echo.
 echo [OK] Zapret removed.
-echo [INFO] For troubleshooting see: kurulum.log
+echo [INFO] For troubleshooting see: zapret.log
 echo [%date% %time%] ========== UNINSTALL COMPLETED ========== >> "!LOGFILE!"
 
 pause

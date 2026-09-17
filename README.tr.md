@@ -10,8 +10,8 @@ Not: Dns ayari eksikse Turkiye'de calismaz. Bu proje DNS farki olmadan hedef sun
 Kisa ozet
 - Wi-Fi / ethernet ayarlarindan DNS'i ekleyin: `1.1.1.1` (veya yedek `1.0.0.1`)
 - Yonetici olarak ac.
-- `hizmet_kur.bat` ile arkada sabitle, ya da `zapret_bypass.bat` ile manuel calistir.
-- Sorun cikarsa `kurulum.log` dosyasina bak.
+- `install.bat` ile arkada sabitle, ya da `zapret_bypass.bat` ile manuel calistir.
+- Sorun cikarsa `zapret.log` dosyasina bak.
 
 Sadece Tcp trafigini degil, udp trafigine de etki ederek proton vpn kullanmaniza izin verir. Proton vpn simdilik sadece udp wireguard kisminda calisiyor.
 
@@ -49,8 +49,8 @@ calistigini gosteriyor.
 - DNS eklemek icin ornek komut: `netsh interface ipv4 set dns name="Wi-Fi" static 1.1.1.1 primary`
 - dns over https ayari extra guvenlik sagliyabilir.
 - tek seferlik kullanimlar icin `zapret_bypass.bat` dosyasini yonetici olarak acmaniz yeterli.
-- arkaplanda ve pcyi her actiginizda calismasini istiyorsaniz `hizmet_kur.bat` dosyasini yonetici olarak acin. Sizin yerinize firewall ve defender ayarlarini yapip windows hizmeti olarak arkaplanda calistiracak.
-- hizmeti kaldirmak icin `hizmet_kaldir.bat` dosyasini yonetici olarak acin. hem windows hizmetlerini kaldiracak hem de firewall ve defender ayarlarini eski haline cevirecektir.
+- arkaplanda ve pcyi her actiginizda calismasini istiyorsaniz `install.bat` dosyasini yonetici olarak acin. Sizin yerinize firewall ve defender ayarlarini yapip windows hizmeti olarak arkaplanda calistiracak.
+- hizmeti kaldirmak icin `uninstall.bat` dosyasini yonetici olarak acin. hem windows hizmetlerini kaldiracak hem de firewall ve defender ayarlarini eski haline cevirecektir.
 - kurulum esasinda herhangi bir problemde log dosyasini kontrol etmeyi unutmayin
 
 # tray app
@@ -60,8 +60,8 @@ artik `ZapretTray.exe` var. saat yaninda ufak bi z simgesi olarak duruyor. cift 
 sol tik panel aciyor, sag tik menu cikariyor. panelde kocaman bi start/stop dugmesi var. simge beyazsa acik, soluk griyse kapali, bakinca anliyorsun.
 
 ne yapiyor:
-- ac kapa. ayarlari `zapret_gorev.cmd` dosyasindan okuyor yani config hala orada duruyor. orayi degistirirsen uygulama da ona gore calisir, iki yerde ayni seyi tutmuyorsun.
-- windows acilisinda calis anahtari. `hizmet_kur.bat` ile ayni isi yapiyor, gorev olusturuyor.
+- ac kapa. ayarlari `zapret_task.cmd` dosyasindan okuyor yani config hala orada duruyor. orayi degistirirsen uygulama da ona gore calisir, iki yerde ayni seyi tutmuyorsun.
+- windows acilisinda calis anahtari. `install.bat` ile ayni isi yapiyor, gorev olusturuyor.
 - tepside otomatik ac anahtari. bunu acarsan her acilista uac sormadan geliyor.
 - winws.exe cokerse kendi geri baslatiyor. 2 dakikada 3 defa denedi hala olmuyorsa birakiyor ve haber veriyor, sonsuz donguye girmiyor.
 - dns bekcisi. public dns var mi, dns sifreli mi diye bakiyor. sadece ayara bakmiyor, gercekten doh calisiyor mu diye sorgu atiyor. cunku doh engellenirse windows sessizce duz metne dusuyor ve kayit defterinde hicbir sey degismiyor. o duruma dusersen uyariyor. zapret'in orada bi faydasi olmuyor zaten, ip'yi zaten yanlis aliyorsun.
@@ -75,7 +75,7 @@ log da panelin icinde gorunuyor, notepad acmaya gerek yok.
 derlemek istersen `tray/build.cmd`. windows'un kendi icindeki csc.exe ile derleniyor, sdk falan kurmana gerek yok. tek dosya cikiyor.
 
 # Update
-Zapret update aldiginda tek yapacaginiz `bin` klasorundekileri degistirmek olacak. Sonrasinda tekrardan `hizmet_kur.bat` dosyasini yonetici olarak calistirin. Zaten bu dosya zapret servisini kaldiriyor, dns cache temizliyor ve sifirdan tekrardan bi servis olusturuyor. Tekrardan hizmet kaldir -> hizmet kur yapmaniza gerek yok.
+Zapret update aldiginda tek yapacaginiz `bin` klasorundekileri degistirmek olacak. Sonrasinda tekrardan `install.bat` dosyasini yonetici olarak calistirin. Zaten bu dosya zapret servisini kaldiriyor, dns cache temizliyor ve sifirdan tekrardan bi servis olusturuyor. Tekrardan hizmet kaldir -> hizmet kur yapmaniza gerek yok.
 not: zapret artik sadece bugfix guncellemeleri alacak.
 
 # VPN'ler

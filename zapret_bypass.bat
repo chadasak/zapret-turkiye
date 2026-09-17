@@ -7,7 +7,7 @@ set "SILENT=0"
 if /I "%~1"=="--silent" set "SILENT=1"
 
 REM Log file path
-set "LOGFILE=%~dp0kurulum.log"
+set "LOGFILE=%~dp0zapret.log"
 
 if not exist "%~dp0bin\winws.exe" (
   echo [ERROR] bin\winws.exe not found.

@@ -165,7 +165,9 @@ namespace ZapretTray
         }
 
         public static string ExePath { get { return Path.Combine(Root, "bin\\winws.exe"); } }
-        public static string LogPath { get { return Path.Combine(Root, "kurulum.log"); } }
+        public static string LogPath { get { return Path.Combine(Root, "zapret.log"); } }
+
+        public static string TaskCmdPath { get { return Path.Combine(Root, "zapret_task.cmd"); } }
 
         public static bool IsRunning()
         {
@@ -183,12 +185,12 @@ namespace ZapretTray
             catch { return 0; }
         }
 
-        // zapret_gorev.cmd stays the single source of truth for the config
+        // zapret_task.cmd stays the single source of truth for the config
         public static string Args()
         {
             try
             {
-                string cmd = Path.Combine(Root, "zapret_gorev.cmd");
+                string cmd = TaskCmdPath;
                 if (File.Exists(cmd))
                 {
                     foreach (string line in File.ReadAllLines(cmd))
@@ -547,7 +549,7 @@ namespace ZapretTray
         public static string CreateBootTask()
         {
             string o;
-            string t = Path.Combine(Root, "zapret_gorev.cmd");
+            string t = TaskCmdPath;
             int rc = Run("schtasks.exe", "/create /tn \"" + TASK_DPI + "\" /tr \"\\\"" + t +
                          "\\\"\" /sc onlogon /rl highest /ru \"SYSTEM\" /f", out o);
             return rc == 0 ? "" : o;
@@ -616,14 +618,14 @@ namespace ZapretTray
         static long logLen = -1;
         static string[] logCache = new string[0];
 
-        // kurulum.log never rotates, so never read the whole thing: seek to the last
+        // zapret.log never rotates, so never read the whole thing: seek to the last
         // 64 KB, and skip the work entirely when the file has not changed
         public static string[] Tail(int n)
         {
             try
             {
                 FileInfo fi = new FileInfo(LogPath);
-                if (!fi.Exists) return new string[] { "(no kurulum.log yet)" };
+                if (!fi.Exists) return new string[] { "(no zapret.log yet)" };
                 if (fi.Length == logLen && fi.LastWriteTimeUtc == logStamp) return logCache;
 
                 List<string> all = new List<string>();

@@ -10,8 +10,8 @@ note: it will not work in turkey if your dns is not set. this project cannot do 
 short version
 - add the dns in your wi-fi / ethernet settings: `1.1.1.1` (or backup `1.0.0.1`)
 - run it as administrator.
-- use `hizmet_kur.bat` to pin it in the background, or `zapret_bypass.bat` to run it by hand.
-- if something breaks, look at `kurulum.log`.
+- use `install.bat` to pin it in the background, or `zapret_bypass.bat` to run it by hand.
+- if something breaks, look at `zapret.log`.
 
 it does not only touch tcp traffic, it affects udp as well, which is what lets you use proton vpn. proton vpn currently only works on the udp wireguard setting.
 
@@ -50,8 +50,8 @@ numbers say it works.
 - example command to add dns: `netsh interface ipv4 set dns name="Wi-Fi" static 1.1.1.1 primary`
 - dns over https gives you extra protection.
 - for one-off use, opening `zapret_bypass.bat` as administrator is enough.
-- if you want it running in the background every time you turn the pc on, open `hizmet_kur.bat` as administrator. it sets up firewall and defender for you and runs it in the background as a windows task.
-- to remove it, open `hizmet_kaldir.bat` as administrator. it removes the windows tasks and puts the firewall and defender settings back the way they were.
+- if you want it running in the background every time you turn the pc on, open `install.bat` as administrator. it sets up firewall and defender for you and runs it in the background as a windows task.
+- to remove it, open `uninstall.bat` as administrator. it removes the windows tasks and puts the firewall and defender settings back the way they were.
 - if anything goes wrong during install, remember to check the log file
 
 # tray app
@@ -61,8 +61,8 @@ there is a `ZapretTray.exe` now. it sits next to your clock as a small z icon. d
 left click opens a panel, right click opens a menu. the panel has a big start/stop button. white icon means on, dim grey means off, you can tell at a glance.
 
 what it does:
-- on and off. it reads the settings from `zapret_gorev.cmd`, so the config still lives there. change that file and the app follows, you are not keeping the same thing in two places.
-- start with windows switch. same job as `hizmet_kur.bat`, it creates the task.
+- on and off. it reads the settings from `zapret_task.cmd`, so the config still lives there. change that file and the app follows, you are not keeping the same thing in two places.
+- start with windows switch. same job as `install.bat`, it creates the task.
 - show the icon at logon switch. turn this on and it comes back on every boot without asking for uac.
 - if winws.exe crashes it restarts it by itself. if it tried 3 times in 2 minutes and it still will not start, it gives up and tells you, so it never loops forever.
 - dns guard. it checks whether you have a public dns and whether dns is encrypted. it does not just read the setting, it sends a real query to see if doh actually works. because if doh gets blocked, windows quietly drops to plaintext and nothing in the registry changes. if that happens it warns you. zapret cannot help you there anyway, you are getting the wrong ip in the first place.
@@ -76,7 +76,7 @@ the log shows up inside the panel as well, no need to open notepad.
 if you want to build it yourself, `tray/build.cmd`. it compiles with the csc.exe that already ships inside windows, you do not need to install an sdk. it produces a single file.
 
 # update
-when zapret gets an update, all you do is replace what is inside the `bin` folder. after that run `hizmet_kur.bat` as administrator again. that file already removes the zapret service, clears the dns cache and creates a service again from scratch. you do not need to do remove -> install a second time.
+when zapret gets an update, all you do is replace what is inside the `bin` folder. after that run `install.bat` as administrator again. that file already removes the zapret service, clears the dns cache and creates a service again from scratch. you do not need to do remove -> install a second time.
 note: zapret will only get bugfix updates from now on.
 
 # vpns

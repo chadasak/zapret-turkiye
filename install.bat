@@ -2,12 +2,12 @@
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-REM Allow --silent to skip interactive pauses (use: hizmet_kur.bat --silent)
+REM Allow --silent to skip interactive pauses (use: install.bat --silent)
 set "SILENT=0"
 if /I "%~1"=="--silent" set "SILENT=1"
 
 REM Log file path (quoted at set to preserve spaces)
-set "LOGFILE=%~dp0kurulum.log"
+set "LOGFILE=%~dp0zapret.log"
 
 REM Administrator check
 net session >nul 2>&1
@@ -54,14 +54,14 @@ if not exist "%~dp0bin\WinDivert64.sys" (
 echo [+] bin\WinDivert64.sys found
 echo [%date% %time%] [OK] bin\WinDivert64.sys found >> "%LOGFILE%"
 
-if not exist "%~dp0zapret_gorev.cmd" (
-    echo [ERROR] zapret_gorev.cmd not found.
-    echo [%date% %time%] [ERROR] zapret_gorev.cmd not found - install aborted >> "%LOGFILE%"
+if not exist "%~dp0zapret_task.cmd" (
+    echo [ERROR] zapret_task.cmd not found.
+    echo [%date% %time%] [ERROR] zapret_task.cmd not found - install aborted >> "%LOGFILE%"
     if %SILENT% equ 0 pause
     exit /b 1
 )
-echo [+] zapret_gorev.cmd found
-echo [%date% %time%] [OK] zapret_gorev.cmd found >> "%LOGFILE%"
+echo [+] zapret_task.cmd found
+echo [%date% %time%] [OK] zapret_task.cmd found >> "%LOGFILE%"
 
 echo [*] Removing mark-of-the-web from files...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; try { Get-ChildItem -LiteralPath '%~dp0' -Recurse -File | Unblock-File; exit 0 } catch { exit 1 }" >nul 2>&1
@@ -100,7 +100,7 @@ echo [+] Stopped
 echo [%date% %time%] [OK] running processes stopped >> "%LOGFILE%"
 
 echo [*] Creating scheduled task...
-set "TASKCMD=%~dp0zapret_gorev.cmd"
+set "TASKCMD=%~dp0zapret_task.cmd"
 :: Quote the /tr argument explicitly to avoid nested-quote problems when path contains spaces
 schtasks /create /tn "ZapretDPI" /tr "\"%TASKCMD%\"" /sc onlogon /rl highest /ru "SYSTEM" /f >nul 2>&1
 set "LAST_ERR=%errorlevel%"
@@ -156,8 +156,8 @@ echo [%date% %time%] [OK] firewall rule added >> "%LOGFILE%"
 echo.
 echo [OK] Zapret installed and running.
 echo [OK] It will start automatically at boot.
-echo [INFO] To remove it: hizmet_kaldir.bat
-echo [INFO] For troubleshooting see: kurulum.log
+echo [INFO] To remove it: uninstall.bat
+echo [INFO] For troubleshooting see: zapret.log
 echo [%date% %time%] ========== INSTALL COMPLETED ========== >> "%LOGFILE%"
 
 if %SILENT% equ 0 (
