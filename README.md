@@ -1,3 +1,5 @@
+🇹🇷 turkce · [🇬🇧 english](README.en.md)
+
 # Zapret Turkiye Surumu
 
 Bu paket, Zapret'in TR icin ayarlanmis hali.
