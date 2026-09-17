@@ -18,28 +18,38 @@ it does not only touch tcp traffic, it affects udp as well, which is what lets y
 
 # what the isp actually does
 
-these came out of the test button in the tray app. same machine, same minutes,
-measured twice:
+these came out of the test button in the tray app. same machine, minutes apart,
+every target measured three times and the median taken:
 
 ```
-                 zapret on        zapret off
-roblox           287 ms           connection reset
-proton api       212 ms           7953 ms
-protonvpn.com    198 ms           11650 ms
+                          zapret on    zapret off
+cloudflare.com (control)  129 ms       137 ms
+www.roblox.com            126 ms       connection reset
+gamejoin.roblox.com       141 ms       connection reset
+discord.com               136 ms       connection reset
+gateway.discord.gg        133 ms       connection reset
+api.protonvpn.ch          159 ms       11072 ms
+protonvpn.com             157 ms       7798 ms
 ```
 
-two different behaviours came out of it, and it is worth telling them apart.
+cloudflare.com is the control and it barely moves, 129 against 137. that matters
+twice over. the connection itself is fine with zapret off, so nothing below is
+just a broken line. and zapret costs nothing measurable on a site nobody is
+blocking.
 
-roblox is properly blocked. the tcp connection opens fine in about 150 ms. then
-the tls clienthello goes out and the connection dies on the spot. the clienthello
-is the packet that carries the site name in the clear. something in the middle
-reads that name and forges a reset. the server is not closing anything, the thing
-in between is.
+roblox and discord are properly blocked, and in the same way. the tcp connection
+opens fine in about 150 ms. then the tls clienthello goes out and the connection
+dies on the spot, every single time, 3 out of 3. the clienthello is the packet
+that carries the site name in the clear. something in the middle reads that name
+and forges a reset. the server is not closing anything, the thing in between is.
+gateway.discord.gg dies too, which is the one that carries voice and messages,
+so discord would not work even if the site somehow opened.
 
-proton is not blocked, it is throttled. the handshake completes every single time,
-but it takes 8 to 11 seconds instead of 0.2. packets get dropped and tcp keeps
-retrying. that is why the client feels like it will not even open: every request
-it makes takes ten seconds and times out. they did not even need to block it.
+proton is a different animal. it is not blocked, it is throttled. the handshake
+completes every time, but it takes 8 to 12 seconds instead of 0.16. packets get
+dropped and tcp keeps retrying until enough get through. that is why the client
+feels like it will not even open: every request it makes takes ten seconds and
+times out. they did not even need to block it.
 
 this is exactly what `--dpi-desync-split-pos=sniext+4` in the config is for. it
 splits the clienthello right across the site name so the dpi cannot match it. the

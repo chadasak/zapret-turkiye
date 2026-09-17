@@ -18,27 +18,37 @@ Sadece Tcp trafigini degil, udp trafigine de etki ederek proton vpn kullanmaniza
 
 # isp gercekte ne yapiyor
 
-bunlar tepsi uygulamasindaki test dugmesinden cikti. ayni makine, ayni dakikalar,
-iki kere olculdu:
+bunlar tepsi uygulamasindaki test dugmesinden cikti. ayni makine, dakikalar
+arayla, her hedef uc kez olculdu ve ortancasi alindi:
 
 ```
-                 zapret acik      zapret kapali
-roblox           287 ms           baglanti resetleniyor
-proton api       212 ms           7953 ms
-protonvpn.com    198 ms           11650 ms
+                          zapret acik  zapret kapali
+cloudflare.com (kontrol)  129 ms       137 ms
+www.roblox.com            126 ms       baglanti resetleniyor
+gamejoin.roblox.com       141 ms       baglanti resetleniyor
+discord.com               136 ms       baglanti resetleniyor
+gateway.discord.gg        133 ms       baglanti resetleniyor
+api.protonvpn.ch          159 ms       11072 ms
+protonvpn.com             157 ms       7798 ms
 ```
 
-iki farkli sansur davranisi cikti, ikisini ayirmak lazim.
+cloudflare.com kontrol hedefi ve neredeyse hic kipirdamiyor, 129'a karsi 137. bu
+iki seyi birden gosteriyor. zapret kapaliyken baglantinin kendisi saglam, yani
+asagidakiler "internet bozuk" degil. ve zapret, kimsenin engellemedigi bi sitede
+olculebilir bi maliyet getirmiyor.
 
-roblox tamamen engelli. tcp baglantisi 150 ms civarinda guzelce aciliyor. sonra
-tls clienthello gidiyor ve baglanti aninda oluyor. clienthello, site adini duz
-metin tasiyan paket. ortadaki bi kutu adi okuyup sahte rst uretiyor. sunucu
-kapatmiyor baglantiyi, araya giren kapatiyor.
+roblox ve discord tamamen engelli, hem de ayni sekilde. tcp baglantisi 150 ms
+civarinda guzelce aciliyor. sonra tls clienthello gidiyor ve baglanti aninda
+oluyor, her seferinde, 3'te 3. clienthello, site adini duz metin tasiyan paket.
+ortadaki bi kutu adi okuyup sahte rst uretiyor. sunucu kapatmiyor baglantiyi,
+araya giren kapatiyor. gateway.discord.gg de oluyor, yani ses ve mesaj trafigini
+tasiyan uc; site bir sekilde acilsa bile discord calismazdi.
 
-proton engelli degil, yavaslatilmis. el sikisma her seferinde tamamlaniyor ama
-0.2 saniye yerine 8-11 saniye suruyor. paket dusuruluyor, tcp tekrar tekrar
-deniyor. client'in "acilmiyor bile" hissi vermesinin sebebi bu: attigi her istek
-on saniye suruyor ve timeout'a giriyor. engellemeye bile gerek duymamislar.
+proton baska bi hikaye. engelli degil, yavaslatilmis. el sikisma her seferinde
+tamamlaniyor ama 0.16 saniye yerine 8-12 saniye suruyor. paket dusuruluyor, tcp
+yeterince paket gecene kadar tekrar tekrar deniyor. client'in "acilmiyor bile"
+hissi vermesinin sebebi bu: attigi her istek on saniye suruyor ve timeout'a
+giriyor. engellemeye bile gerek duymamislar.
 
 config'deki `--dpi-desync-split-pos=sniext+4` tam olarak bunun icin var.
 clienthello'yu site adinin ustunden bolup dpi'nin eslesmesini bozuyor. sayilar
