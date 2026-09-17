@@ -23,6 +23,27 @@ Sadece Tcp trafigini degil, udp trafigine de etki ederek proton vpn kullanmaniza
 - hizmeti kaldirmak icin `hizmet_kaldir.bat` dosyasini yonetici olarak acin. hem windows hizmetlerini kaldiracak hem de firewall ve defender ayarlarini eski haline cevirecektir.
 - kurulum esasinda herhangi bir problemde log dosyasini kontrol etmeyi unutmayin
 
+# tray app
+
+artik `ZapretTray.exe` var. saat yaninda ufak bi z simgesi olarak duruyor. cift tiklayip aciyorsun, uac soracak, normal, winws.exe zaten yonetici istiyor.
+
+sol tik panel aciyor, sag tik menu cikariyor. panelde kocaman bi start/stop dugmesi var. simge beyazsa acik, soluk griyse kapali, bakinca anliyorsun.
+
+ne yapiyor:
+- ac kapa. ayarlari `zapret_gorev.cmd` dosyasindan okuyor yani config hala orada duruyor. orayi degistirirsen uygulama da ona gore calisir, iki yerde ayni seyi tutmuyorsun.
+- windows acilisinda calis anahtari. `hizmet_kur.bat` ile ayni isi yapiyor, gorev olusturuyor.
+- tepside otomatik ac anahtari. bunu acarsan her acilista uac sormadan geliyor.
+- winws.exe cokerse kendi geri baslatiyor. 2 dakikada 3 defa denedi hala olmuyorsa birakiyor ve haber veriyor, sonsuz donguye girmiyor.
+- dns bekcisi. public dns var mi, dns sifreli mi diye bakiyor. sadece ayara bakmiyor, gercekten doh calisiyor mu diye sorgu atiyor. cunku doh engellenirse windows sessizce duz metne dusuyor ve kayit defterinde hicbir sey degismiyor. o duruma dusersen uyariyor. zapret'in orada bi faydasi olmuyor zaten, ip'yi zaten yanlis aliyorsun.
+- onar dugmesi. firewall kurali, defender istisnasi, dns cache, dosya engeli. hepsini arka arkaya yapiyor.
+- test dugmesi. roblox, proton, discord ve kontrol icin cloudflare'a baglanip tls el sikismasini olcuyor. baglanti resetleniyorsa BLOCKED, 3 saniyeden uzun suruyorsa THROTTLED diyor. cloudflare da patlarsa sorun sansur degil internetin diye soyluyor. tahmin etmek yerine bakmis oluyorsun.
+
+cikinca zapret de duruyor, tekrar acinca geri geliyor. yani simge tam anlamiyla ac kapa dugmesi.
+
+log da panelin icinde gorunuyor, notepad acmaya gerek yok.
+
+derlemek istersen `tray/build.cmd`. windows'un kendi icindeki csc.exe ile derleniyor, sdk falan kurmana gerek yok. tek dosya cikiyor.
+
 # Update
 Zapret update aldiginda tek yapacaginiz `bin` klasorundekileri degistirmek olacak. Sonrasinda tekrardan `hizmet_kur.bat` dosyasini yonetici olarak calistirin. Zaten bu dosya zapret servisini kaldiriyor, dns cache temizliyor ve sifirdan tekrardan bi servis olusturuyor. Tekrardan hizmet kaldir -> hizmet kur yapmaniza gerek yok.
 not: zapret artik sadece bugfix guncellemeleri alacak.
