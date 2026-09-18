@@ -36,6 +36,34 @@ if %errorlevel% equ 0 (
     echo [%date% %time%] [INFO] no running winws.exe found >> "!LOGFILE!"
 )
 
+REM WinDivert is a kernel driver. winws.exe loads it and it stays loaded after
+REM the process exits, which keeps bin\WinDivert64.sys locked and makes the
+REM folder impossible to delete. Unload it here, after winws.exe is gone.
+echo [*] Unloading the WinDivert driver...
+set "WD_FOUND=0"
+for %%S in (WinDivert WinDivert1.0 WinDivert1.1 WinDivert1.2 WinDivert1.3 WinDivert1.4 WinDivert2.0) do (
+    sc query %%S >nul 2>&1
+    if !errorlevel! equ 0 (
+        set "WD_FOUND=1"
+        sc stop %%S >nul 2>&1
+        REM give the driver a moment to unload before unregistering it
+        ping -n 3 127.0.0.1 >nul 2>&1
+        sc delete %%S >nul 2>&1
+        sc query %%S >nul 2>&1
+        if !errorlevel! equ 0 (
+            echo [INFO] %%S is marked for deletion, a reboot will finish it
+            echo [%date% %time%] [INFO] %%S still present, reboot needed >> "!LOGFILE!"
+        ) else (
+            echo [+] %%S driver unloaded and unregistered
+            echo [%date% %time%] [OK] %%S driver unloaded >> "!LOGFILE!"
+        )
+    )
+)
+if "!WD_FOUND!"=="0" (
+    echo [INFO] No WinDivert driver was loaded
+    echo [%date% %time%] [INFO] no WinDivert driver registered >> "!LOGFILE!"
+)
+
 schtasks /delete /tn "ZapretDPI" /f >nul 2>&1
 if %errorlevel% equ 0 (
     echo [+] Scheduled task deleted
