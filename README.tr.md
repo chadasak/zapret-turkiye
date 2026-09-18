@@ -67,6 +67,22 @@ calistigini gosteriyor.
 
 artik `ZapretTray.exe` var. saat yaninda ufak bi z simgesi olarak duruyor. cift tiklayip aciyorsun, uac soracak, normal, winws.exe zaten yonetici istiyor.
 
+bu depodan almiyorsun. bilerek koymuyoruz buraya. bir surum etiketlendiginde
+github actions `tray/` icindeki kaynaktan derliyor ve
+[releases](https://github.com/chadasak/zapret-turkiye/releases) sayfasina
+ekliyor, yani derleme kaydina bakip indirdigin ikilinin hangi commit'ten ciktigini
+gorebiliyorsun.
+
+her surumun sha256'si notlarda yaziyor. calistirmadan once kontrol et:
+
+```powershell
+Get-FileHash ZapretTray.exe -Algorithm SHA256
+```
+
+uac soruyor ve kendi klasoru icin defender istisnasi ekliyor, cunku winws.exe
+ikisine de ihtiyac duyuyor. tam da bu yuzden icinde ne oldugu konusunda kimsenin
+sozune guvenmek zorunda kalmamalisin.
+
 sol tik panel aciyor, sag tik menu cikariyor. panelde kocaman bi start/stop dugmesi var. simge beyazsa acik, soluk griyse kapali, bakinca anliyorsun.
 
 ne yapiyor:

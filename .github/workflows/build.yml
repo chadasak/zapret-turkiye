@@ -1,0 +1,42 @@
+name: build
+
+# Catches a broken tray app before a tag is ever cut. Does not publish anything.
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'tray/**'
+      - '.github/workflows/build.yml'
+  pull_request:
+    paths:
+      - 'tray/**'
+      - '.github/workflows/build.yml'
+
+jobs:
+  compile:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile the tray app
+        shell: pwsh
+        run: |
+          $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          if (-not (Test-Path $csc)) { throw "csc.exe not found at $csc" }
+          & $csc /nologo /target:winexe /optimize+ /platform:anycpu /codepage:65001 `
+                 "/win32manifest:tray\app.manifest" `
+                 /r:System.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll `
+                 "/out:ZapretTray.exe" "tray\ZapretTray.cs"
+          if ($LASTEXITCODE -ne 0) { throw "compile failed with exit code $LASTEXITCODE" }
+          Write-Host "ok - $((Get-Item ZapretTray.exe).Length) bytes"
+
+      - name: Refuse a committed binary
+        shell: pwsh
+        run: |
+          $tracked = git ls-files 'ZapretTray.exe'
+          if ($tracked) {
+            throw "ZapretTray.exe is tracked in git. It is meant to be built here and attached to a release, not committed."
+          }
+          Write-Host "ok - no committed tray binary"

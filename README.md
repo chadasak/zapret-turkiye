@@ -68,6 +68,22 @@ numbers say it works.
 
 there is a `ZapretTray.exe` now. it sits next to your clock as a small z icon. double click it, it will ask for uac, that is normal, winws.exe needs administrator anyway.
 
+you do not get it from this repo. it is not committed here on purpose. github
+actions builds it from the source in `tray/` when a version is tagged, and
+attaches it to the [releases](https://github.com/chadasak/zapret-turkiye/releases)
+page, so the build log shows exactly which commit produced the binary you
+downloaded.
+
+every release carries the sha256. check it before you run anything:
+
+```powershell
+Get-FileHash ZapretTray.exe -Algorithm SHA256
+```
+
+it asks for uac and it adds a defender exclusion for its own folder, because
+winws.exe needs both. that is precisely why you should not have to take anyone's
+word for what is inside it.
+
 left click opens a panel, right click opens a menu. the panel has a big start/stop button. white icon means on, dim grey means off, you can tell at a glance.
 
 what it does:
